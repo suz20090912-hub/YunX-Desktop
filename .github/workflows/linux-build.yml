@@ -72,7 +72,9 @@ jobs:
       - name: 校验 deb 内容
         run: |
           set -euo pipefail
-          DEB=$(ls desktop/build/compose/binaries/main/deb/*.deb | head -n1)
+          shopt -s nullglob
+          DEBS=(desktop/build/compose/binaries/main/deb/*.deb)
+          DEB="${DEBS[0]}"
           SIZE=$(stat -c%s "$DEB")
           echo "产物: $DEB"
           echo "体积: $((SIZE/1024/1024)) MB"
@@ -80,7 +82,8 @@ jobs:
             echo "::error::包体异常（$((SIZE/1024/1024)) MB），JCEF 原生库可能缺失"
             exit 1
           fi
-          if ! dpkg-deb -c "$DEB" | grep -q 'bin/YunX-Desktop'; then
+          dpkg-deb -c "$DEB" > /tmp/deb-list.txt
+          if ! grep -Eq 'bin/(YunX-Desktop|yunx-desktop)' /tmp/deb-list.txt; then
             echo "::error::包内缺少 bin/YunX-Desktop 启动脚本"
             exit 1
           fi
@@ -110,7 +113,10 @@ jobs:
           export DISPLAY=:99
           setsid openbox > /tmp/openbox.log 2>&1 < /dev/null &
           sleep 2
-          setsid /opt/yunx-desktop/bin/YunX-Desktop > /tmp/yunx.log 2>&1 < /dev/null &
+          APP=$(dpkg-query -L yunx-desktop 2>/dev/null | grep -E '^/opt/.*/bin/' | while read -r p; do [ -f "$p" ] && [ -x "$p" ] && echo "$p"; done | head -n1)
+          [ -n "$APP" ] || APP=/opt/yunx-desktop/bin/YunX-Desktop
+          echo "启动器: $APP"
+          setsid "$APP" > /tmp/yunx.log 2>&1 < /dev/null &
           APP_PID=$!
           echo "应用 PID: $APP_PID"
 
