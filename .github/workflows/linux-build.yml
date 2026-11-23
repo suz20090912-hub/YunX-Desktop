@@ -93,8 +93,8 @@ jobs:
       - name: 安装 deb
         run: |
           set -uo pipefail
-          sudo dpkg -i out/*.deb
-          sudo mkdir -p /usr/local/share/applications
+          sudo mkdir -p /usr/share/applications /usr/local/share/applications
+          sudo dpkg -i out/*.deb || echo "dpkg -i 返回非零（postinst 的 xdg 菜单目录问题），继续尝试配置"
           sudo dpkg --configure -a || true
           STATUS=$(dpkg-query -W -f='${Status}' yunx-desktop 2>/dev/null || echo "missing")
           echo "dpkg 状态: $STATUS"
