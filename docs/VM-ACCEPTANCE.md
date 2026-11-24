@@ -2,8 +2,8 @@
 
 日期：2026-11-24
 环境：Ubuntu 22.04.5 LTS x86_64（无头验收，Xvfb 1440x900 + Openbox）
-安装包：`yunx-desktop_1.3.4-1_amd64.deb`
-SHA-256：`2886742c9c247b760fbcfdf215132579f44dc98253a6471db1c31427626996f9`
+安装包：`yunx-desktop_1.3.4-1_amd64.deb`（Release `v1.3.4-linux.3`，230,120,998 字节）
+SHA-256：`48a945e7dd51b2b0a614a873620d0a5ea831c9b9189e9efb84da7412f650276f`
 
 ## 安装
 
