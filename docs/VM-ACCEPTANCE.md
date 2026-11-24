@@ -69,9 +69,10 @@ I/YunX-JCEF: JCEF initialized (attempt 1)
 - 包内 `lib/app/desktop-*.jar` 含 `com/yunx/app/util/LinuxPackageInstaller.class`（一键安装入口已随包发布）。
 - 系统存在 `/usr/bin/pkexec`；图形密码框依赖桌面会话的 polkit agent（GNOME/KDE 自带），
   无头验收环境无 agent，故一键安装的授权弹窗只能在真实桌面（如 Hyper-V 里的 Ubuntu 桌面）验证。
+- 真实桌面点验通过（2026-11-24，用户 Hyper-V Ubuntu 24.04 GNOME）：.7 → .8 经下载页「安装更新」
+  + pkexec 密码框完成升级；重启后关于页显示 `1.3.4-linux.8`，不再误报同版本更新。
 
 ## 待办
 
 - 真实 GitHub Actions 的 tag Release 已实际触发验证（v1.3.4-linux.1 ~ .7 均产出 deb 资产）。
 - 桌面菜单注册依赖真实桌面会话；当前无头环境已验证不会阻塞安装。
-- 一键安装按钮的图形授权弹窗待在真实桌面会话点验一次（无头环境无法弹 polkit 框）。
