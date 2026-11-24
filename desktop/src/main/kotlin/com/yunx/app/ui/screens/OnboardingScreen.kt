@@ -296,7 +296,7 @@ private fun WelcomePage() {
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "YunX-Desktop · Linux 版 · v$APP_VERSION",
+            text = "YunX-Linux · Linux 版 · v$APP_VERSION",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -360,7 +360,7 @@ private fun FactChip(text: String) {
 private fun GitHubCard() {
     Card(
         onClick = {
-            DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Desktop")
+            DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Linux")
         },
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -395,7 +395,7 @@ private fun GitHubCard() {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "github.com/suz20090912-hub/YunX-Desktop",
+                    text = "github.com/suz20090912-hub/YunX-Linux",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -653,7 +653,7 @@ private fun TermsPage() {
             icon = Icons.Outlined.Code,
             title = "Linux 版说明",
             paragraphs = listOf(
-                "本 Linux 版完全移植自 YunX-Desktop 桌面版（Windows），仅在技术层面实现 Linux 兼容运行；界面、功能一致，不额外增加功能。",
+                "本 Linux 版完全移植自上游 Windows 桌面版 YunX-Desktop，仅在技术层面实现 Linux 兼容运行；界面、功能一致，不额外增加功能。",
                 "系统差异：数据库只有「宽松 / 普通」；无托盘时关闭回退为退出 / 每次询问；通知走 notify-send；代理读 GNOME 或环境变量；合轨优先系统 ffmpeg。",
                 "预览默认窗口内播放；编码不支持时会提示并切到 FFplay 兼容模式（独立窗口，控制条仍在应用底部）。"
             )
@@ -664,7 +664,7 @@ private fun TermsPage() {
             icon = Icons.Outlined.Code,
             title = "开源协议",
             paragraphs = listOf(
-                "本项目基于 GNU AGPL-3.0 协议开源，Linux 版源码公开于 github.com/suz20090912-hub/YunX-Desktop；上游 Windows 桌面版为 github.com/tidain/YunX-Desktop。"
+                "本项目基于 GNU AGPL-3.0 协议开源，Linux 版源码公开于 github.com/suz20090912-hub/YunX-Linux；上游 Windows 桌面版为 github.com/tidain/YunX-Desktop。"
             )
         )
 

@@ -169,7 +169,7 @@ fun SupportScreen(
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                         Text(
-                            text = "本项目由于完全移植于 desktop 版，故不设置赞助渠道。" +
+                            text = "本项目完全移植自上游 Windows 桌面版 YunX-Desktop，故不设置赞助渠道。" +
                                 "如有想要赞助的想法，请赞助下面两位上游作者。",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -202,7 +202,7 @@ fun SupportScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (isLinuxOs) "微信扫码赞助（安卓版 / 桌面端作者）" else "微信扫码捐赠",
+                            text = if (isLinuxOs) "微信扫码赞助（安卓版 / Windows 桌面版作者）" else "微信扫码捐赠",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium
                         )
@@ -249,14 +249,14 @@ fun SupportScreen(
                             ) {
                                 androidx.compose.foundation.Image(
                                     painter = painterResource("sponsor_tidain_weixin.png"),
-                                    contentDescription = "桌面端赞赏码（点击放大）",
+                                    contentDescription = "Windows 桌面版赞赏码（点击放大）",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Fit
                                 )
                             }
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "桌面端 (tidain)",
+                                text = "Windows 桌面版 (tidain)",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -318,7 +318,7 @@ fun SupportScreen(
             if (isLinuxOs) {
                 OutlinedButton(
                     onClick = {
-                        DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Desktop")
+                        DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Linux")
                         SnackbarController.show("已打开 Linux 版仓库")
                     },
                     modifier = Modifier

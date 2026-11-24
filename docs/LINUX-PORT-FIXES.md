@@ -87,12 +87,12 @@
 
 - 关于页、首次引导页统一改为 Linux 桌面端口径，明确标注「完全移植自 YunX-Desktop 桌面版（Windows），仅在技术层面实现 Linux 兼容运行，界面/功能一致，不额外增加 Linux 专属功能」。
 - 关于页新增「Linux 版说明」卡片：预览默认窗口内播放、编码不支持时切 FFplay 兼容模式（独立窗口）、数据库仅宽松/普通、无托盘时关闭回退、通知走 notify-send、代理读 GNOME/环境变量、合轨优先系统 ffmpeg、数据目录与日志反馈。
-- 功能特性里的「在线预览 / 引擎管理」改成 Linux 实际行为；仓库卡改为「Linux 版源码仓库」，链接到 `suz20090912-hub/YunX-Desktop`，并注明上游为 Windows 桌面版。
+- 功能特性里的「在线预览 / 引擎管理」改成 Linux 实际行为；仓库卡改为「Linux 版源码仓库」，链接到 `suz20090912-hub/YunX-Linux`，并注明上游为 Windows 桌面版。
 - 引导页欢迎页、功能特性页、协议页都补了同一段移植说明，避免用户误以为 Linux 版有额外功能。
 
 ### Linux 仓库地址与赞助页说明（2026-11-24）
 
-- 关于页、首次引导页的仓库入口改为 Linux 版仓库 `https://github.com/suz20090912-hub/YunX-Desktop`，同时保留上游 Windows 桌面版地址。
+- 关于页、首次引导页的仓库入口改为 Linux 版仓库 `https://github.com/suz20090912-hub/YunX-Linux`，同时保留上游 Windows 桌面版地址。
 - 支持开发页新增 Linux 声明：本项目由于完全移植于 desktop 版，故不设置赞助渠道；如有想要赞助的想法，请赞助安卓版作者（CYQawa）与桌面版作者（tidain）。
 - 支持开发页新增「Linux 版仓库」入口；设置页的「支持开发」副标题在 Linux 上改为「Linux 版不设赞助渠道，可赞助上游作者」。
 - README 新增「赞助说明」与 Linux 版仓库地址；`docs/BUILD-LINUX.md` 补齐 Linux 构建与依赖说明；新增 GitHub Actions Linux 构建工作流。

@@ -26,7 +26,7 @@ object DesktopNotifier {
         }
         runCatching {
             val p = ProcessBuilder(
-                bin, "-a", "云析 YunX-Desktop", "-t", "5000", title, message
+                bin, "-a", "云析 YunX-Linux", "-t", "5000", title, message
             ).redirectErrorStream(true).start()
             if (!p.waitFor(3, TimeUnit.SECONDS)) {
                 p.destroyForcibly()

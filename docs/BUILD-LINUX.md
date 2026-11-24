@@ -41,8 +41,8 @@ export PATH="$JAVA_HOME/bin:$PATH"
 ## 编译
 
 ```bash
-git clone https://github.com/suz20090912-hub/YunX-Desktop.git
-cd YunX-Desktop
+git clone https://github.com/suz20090912-hub/YunX-Linux.git
+cd YunX-Linux
 ```
 
 在仓库根目录执行：
@@ -159,7 +159,7 @@ GNOME 等桌面没有 XEmbed tray owner 时，AWT 托盘可能挂不上。应用
 3. Release 资产命名保持 `yunx-desktop_<版本>-1_amd64.deb`，应用内更新检查按 Linux 资产后缀匹配。
 4. 不要提交 `desktop/build/`、`.gradle/`、`.kotlin/`、`*.deb` 或本机 `~/.yunx-desktop` 数据。
 
-`patchDebDepends` 还会在 deb 中创建 `/usr/bin/yunx-desktop -> ../../opt/yunx-desktop/bin/YunX-Desktop`，安装后可直接执行 `yunx-desktop`。
+`patchDebDepends` 还会在 deb 中创建 `/usr/bin/yunx-desktop -> ../../opt/yunx-desktop/bin/YunX-Linux`，安装后可直接执行 `yunx-desktop`。
 
 ### 运行依赖自动补丁
 

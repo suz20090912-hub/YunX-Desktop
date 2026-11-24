@@ -3,7 +3,17 @@
 本文件只记录 Linux 版相对上游 Windows 桌面版的版本变化；完整移植细节见
 [Linux 移植记录](docs/LINUX-PORT-FIXES.md)。
 
-## v1.3.4-linux.1（2026-11-24，待发布）
+## v1.3.4-linux.2（2026-11-24，待发布）
+
+### 变更
+
+- 项目与仓库更名为 **YunX-Linux**，明确标注 Linux 版，避免被误认为 Windows 桌面版。
+- 应用窗口标题、托盘提示、打包元信息与 Linux 可执行文件统一改为 `云析 YunX-Linux` / `YunX-Linux`。
+- 关于页、首次引导页、支持开发页的 Linux 仓库地址同步为新仓库 `suz20090912-hub/YunX-Linux`。
+- 更新检查改为查询新仓库的 Releases，只匹配 Linux 安装包。
+- `docs/images/` 下旧 Windows 截图全部替换为 Linux 实机截图；README 增加设置页、网盘页截图。
+
+## v1.3.4-linux.1（2026-11-24，已发布）
 
 首个 Linux 桌面移植版本，基线为上游 `v1.3.4`。
 

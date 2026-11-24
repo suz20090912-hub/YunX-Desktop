@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="desktop/src/main/resources/icon.png" width="120" alt="云析 YunX-Desktop" />
+<img src="desktop/src/main/resources/icon.png" width="120" alt="云析 YunX-Linux" />
 
-# 云析桌面版 · Linux 版
+# 云析 YunX-Linux · Linux 版
 
-**YunX-Desktop 的 Linux 移植版 —— 粘贴分享链接，直接高速下载**
+**云析 Linux 版（YunX-Linux）—— 粘贴分享链接，直接高速下载**
 
 网盘：夸克 / UC / 迅雷 / 百度 / 139 / 123 / 115 / 光鸭 / 蓝奏云 / 蓝奏云优享版；
 视频：哔哩哔哩 / 小红书 / 抖音 / 微博 / 快手 / AcFun / Pixiv；另支持磁力 / BT 种子 / ed2k 等 P2P 链接。
@@ -15,7 +15,7 @@ Range 分片并发 + 断点续传，B 站高清自动合轨。
 [![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=flat-square\&logo=kotlin\&logoColor=white)](https://kotlinlang.org/)
 [![Compose](https://img.shields.io/badge/Compose%20Multiplatform-Desktop-4285F4?style=flat-square\&logo=jetpackcompose\&logoColor=white)](https://www.jetbrains.com/lp/compose-multiplatform/)
 
-[下载最新版](https://github.com/suz20090912-hub/YunX-Desktop/releases/latest) · [功能](#功能) · [Linux 构建](docs/BUILD-LINUX.md) · [移植记录](docs/LINUX-PORT-FIXES.md) · [与安卓版差异](docs/UPSTREAM-DIFF.md)
+[下载最新版](https://github.com/suz20090912-hub/YunX-Linux/releases/latest) · [功能](#功能) · [Linux 构建](docs/BUILD-LINUX.md) · [移植记录](docs/LINUX-PORT-FIXES.md) · [与安卓版差异](docs/UPSTREAM-DIFF.md)
 
 </div>
 
@@ -29,10 +29,12 @@ Range 分片并发 + 断点续传，B 站高清自动合轨。
 
 ## Linux 版说明
 
-本仓库是 **YunX-Desktop 的 Linux 移植版**：
+本仓库是 **云析 Linux 版（YunX-Linux）**，由上游 **Windows 桌面版 YunX-Desktop** 移植而来：
 
-- Linux 版仓库：<https://github.com/suz20090912-hub/YunX-Desktop>
+- Linux 版仓库：<https://github.com/suz20090912-hub/YunX-Linux>
 - 上游 Windows 桌面版：[tidain/YunX-Desktop](https://github.com/tidain/YunX-Desktop)
+
+> 仓库已由 `YunX-Desktop` 更名为 **`YunX-Linux`**，旧地址会由 GitHub 自动重定向。
 
 - **完全移植自 Windows 桌面版**：界面、功能、交互与上游保持一致。
 - **只在技术层面实现 Linux 兼容运行**：改动集中在宿主适配层（路径、权限、托盘、通知、代理、窗口焦点、CEF、播放器等），不额外增加 Linux 专属功能。
@@ -41,15 +43,21 @@ Range 分片并发 + 断点续传，B 站高清自动合轨。
 
 ## 界面截图
 
-![Linux 主界面](docs/screenshots/linux-main.png)
+| Linux 主界面 | Linux 设置页 |
+| --- | --- |
+| ![Linux 主界面](docs/screenshots/linux-main.png) | ![Linux 设置页](docs/screenshots/linux-settings.png) |
 
-![Linux 支持开发页](docs/screenshots/linux-support.png)
+| Linux 网盘页 | Linux 支持开发页 |
+| --- | --- |
+| ![Linux 网盘页](docs/screenshots/linux-netdisk.png) | ![Linux 支持开发页](docs/screenshots/linux-support.png) |
 
-![Linux 关于页](docs/screenshots/linux-about.png)
+| Linux 关于页 |
+| --- |
+| ![Linux 关于页](docs/screenshots/linux-about.png) |
 
 ## 安装
 
-从 [Releases](https://github.com/suz20090912-hub/YunX-Desktop/releases/latest) 下载 `.deb`：
+从 [Releases](https://github.com/suz20090912-hub/YunX-Linux/releases/latest) 下载 `.deb`：
 
 ```bash
 sudo apt install ./yunx-desktop_<版本>_amd64.deb
@@ -189,10 +197,10 @@ Windows 桌面版的原有构建方式仍保留在 **[构建与打包（Windows�
 
 ## 更多
 
-- Linux 版仓库：<https://github.com/suz20090912-hub/YunX-Desktop>
+- Linux 版仓库：<https://github.com/suz20090912-hub/YunX-Linux>
 - 上游 Windows 桌面版：<https://github.com/tidain/YunX-Desktop>
 - 安卓版：<https://github.com/CYQawa/YunX>
-- 问题与建议：<https://github.com/suz20090912-hub/YunX-Desktop/issues>
+- 问题与建议：<https://github.com/suz20090912-hub/YunX-Linux/issues>
 - 云析 Docker 社区移植版：<https://github.com/mu-zi-lee/YunX-Docker>
 
 ## 贡献者

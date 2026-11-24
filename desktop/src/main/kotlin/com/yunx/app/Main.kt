@@ -249,7 +249,7 @@ fun main(args: Array<String>) {
             onCloseRequest = {
                 if (!suppressCloseRequest) closeRequested = true
             },
-            title = "云析 YunX-Desktop",
+            title = "云析 YunX-Linux",
             state = windowState,
             icon = remember { loadWindowIcon() },
         ) {

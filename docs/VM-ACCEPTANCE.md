@@ -14,7 +14,7 @@ sudo dpkg -i desktop/build/compose/binaries/main/deb/yunx-desktop_1.3.4-1_amd64.
 结果：
 
 - `dpkg -s yunx-desktop`：`Status: install ok installed`、`Version: 1.3.4-1`。
-- `/usr/bin/yunx-desktop -> ../../opt/yunx-desktop/bin/YunX-Desktop` 已创建。
+- `/usr/bin/yunx-desktop -> ../../opt/yunx-desktop/bin/YunX-Linux` 已创建。
 - 无桌面菜单环境会打印 `xdg-desktop-menu: No writable system menu directory found.`，
   `postinst` 已用 `|| true` 兜底，不再让 apt 安装失败。
 
@@ -32,7 +32,7 @@ Recommends: ffmpeg, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good,
 ## 启动
 
 ```bash
-DISPLAY=:100 dbus-run-session -- /opt/yunx-desktop/bin/YunX-Desktop
+DISPLAY=:100 dbus-run-session -- /opt/yunx-desktop/bin/YunX-Linux
 ```
 
 启动日志关键行：
@@ -54,10 +54,10 @@ I/YunX-JCEF: JCEF initialized (attempt 1)
 ## 文案与入口检查
 
 - 支持开发页显示：「本项目由于完全移植于 desktop 版，故不设置赞助渠道。如有想要赞助的想法，请赞助下面两位上游作者。」
-- 支持开发页提供「Linux 版仓库」按钮，指向 `https://github.com/suz20090912-hub/YunX-Desktop`。
+- 支持开发页提供「Linux 版仓库」按钮，指向 `https://github.com/suz20090912-hub/YunX-Linux`。
 - 关于页的「Linux 版源码仓库」卡同时显示 Linux 仓库与上游 `tidain/YunX-Desktop`。
 - 设置页「支持开发」副标题为「Linux 版不设赞助渠道，可赞助上游作者」。
-- Linux 更新检查查询 `suz20090912-hub/YunX-Desktop` 的 Releases，只匹配 Linux 资产。
+- Linux 更新检查查询 `suz20090912-hub/YunX-Linux` 的 Releases，只匹配 Linux 资产。
 - `/usr/bin/yunx-desktop` 可直接启动应用。
 
 ## 待办

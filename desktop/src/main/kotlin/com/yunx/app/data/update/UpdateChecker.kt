@@ -18,7 +18,7 @@ import org.json.JSONObject
 object UpdateChecker {
 
     private val isLinuxHost = System.getProperty("os.name").orEmpty().lowercase().contains("linux")
-    private val updateRepo = if (isLinuxHost) "suz20090912-hub/YunX-Desktop" else "tidain/YunX-Desktop"
+    private val updateRepo = if (isLinuxHost) "suz20090912-hub/YunX-Linux" else "tidain/YunX-Desktop"
 
     private val RELEASES_LATEST_URL =
         "https://api.github.com/repos/$updateRepo/releases/latest"

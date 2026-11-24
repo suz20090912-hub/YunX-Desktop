@@ -54,7 +54,7 @@ object TrayManager {
         if (!isSupported) return
         if (trayIcon != null) uninstall()
 
-        val icon = TrayIcon(image.getScaledInstance(16, 16, Image.SCALE_SMOOTH), "云析 YunX-Desktop").apply {
+        val icon = TrayIcon(image.getScaledInstance(16, 16, Image.SCALE_SMOOTH), "云析 YunX-Linux").apply {
             isImageAutoSize = true
             // 空 PopupMenu：Windows 必须设才能收到右键事件；Linux 设空菜单会弹出空白菜单，反而不弹回调
             if (isWindows) popupMenu = PopupMenu()

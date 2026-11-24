@@ -110,7 +110,7 @@ fun AboutScreen(
                 description = "云析（YunX）是一款网盘分享链接 + 视频链接解析与高速下载工具。" +
                     "粘贴分享链接或视频短链，登录账号后即可浏览内容、在线预览并直接高速下载；" +
                     "也支持磁力 / BT 种子 / ed2k 等 P2P 链接下载。\n" +
-                    "Linux 桌面端：本版本完全移植自 YunX-Desktop 桌面版（Windows），仅在技术层面实现 Linux 兼容运行；" +
+                    "Linux 桌面端：本版本完全移植自上游 Windows 桌面版 YunX-Desktop，仅在技术层面实现 Linux 兼容运行；" +
                     "界面和功能与桌面版一致，不额外增加 Linux 专属功能。"
             )
             
@@ -186,7 +186,7 @@ private fun AppHeader(versionName: String) {
         Spacer(modifier = Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "YunX-Desktop · Linux 版 · v$versionName",
+                text = "YunX-Linux · Linux 版 · v$versionName",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -209,7 +209,7 @@ private fun AppHeader(versionName: String) {
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Linux 桌面端 · 完全移植自 Windows 桌面版",
+            text = "Linux 桌面端 · 基于上游 Windows 桌面版移植",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary
         )
@@ -262,7 +262,7 @@ private fun LinuxPortCard() {
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "本 Linux 版完全移植自 YunX-Desktop 桌面版（Windows），仅在技术层面实现 Linux 兼容运行；" +
+                    text = "本 Linux 版完全移植自上游 Windows 桌面版 YunX-Desktop，仅在技术层面实现 Linux 兼容运行；" +
                         "界面、功能与桌面版一致，不额外增加 Linux 专属功能。\n\n" +
                         "• 预览：默认窗口内播放，进度 / 音量 / 亮度可调；编码不支持时会提示并切到 FFplay 兼容模式" +
                         "（独立窗口，控制条仍在应用底部）。\n" +
@@ -638,7 +638,7 @@ private fun GitHubCard() {
 private fun DesktopRepoCard() {
     Card(
         onClick = {
-            DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Desktop")
+            DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Linux")
         },
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -674,7 +674,7 @@ private fun DesktopRepoCard() {
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "github.com/suz20090912-hub/YunX-Desktop\n上游：github.com/tidain/YunX-Desktop",
+                    text = "github.com/suz20090912-hub/YunX-Linux\n上游：github.com/tidain/YunX-Desktop",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
