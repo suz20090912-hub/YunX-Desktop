@@ -49,6 +49,7 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Power
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -106,9 +107,12 @@ import com.yunx.app.ui.components.rememberDownloadDirPicker
 import com.yunx.app.ui.theme.ThemeController
 import com.yunx.app.ui.viewmodel.DownloadViewModel
 import com.yunx.app.util.DesktopActions
+import com.yunx.app.util.LinuxPackageInstaller
+import com.yunx.app.util.WindowsTitleBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * 下载页：任务列表（分片多线程下载 / 断点续传）、进度展示、暂停/继续/删除/打开。
@@ -715,6 +719,38 @@ private fun FolderDownloadGroupHeader(
 }
 
 /**
+ * Linux 专属「安装更新」按钮：已完成且文件为 `.deb` 时显示。
+ * 点击后走 [LinuxPackageInstaller]（pkexec 图形密码框授权 apt 覆盖安装），全程无需终端；
+ * Windows 或非 deb 文件不渲染任何东西。
+ */
+@Composable
+private fun InstallDebIconButton(savePath: String, compact: Boolean) {
+    if (WindowsTitleBar.isWindows || !savePath.endsWith(".deb", ignoreCase = true)) return
+    val scope = rememberCoroutineScope()
+    var installing by remember { mutableStateOf(false) }
+    IconButton(
+        onClick = {
+            if (installing) return@IconButton
+            installing = true
+            scope.launch {
+                SnackbarController.show("正在安装更新：请在系统弹窗中输入密码授权")
+                val outcome = withContext(Dispatchers.IO) { LinuxPackageInstaller.installDeb(File(savePath)) }
+                installing = false
+                SnackbarController.show(outcome.message)
+            }
+        },
+        modifier = if (compact) Modifier.size(32.dp) else Modifier
+    ) {
+        Icon(
+            Icons.Outlined.SystemUpdate,
+            contentDescription = "安装更新",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = if (compact) Modifier.size(18.dp) else Modifier
+        )
+    }
+}
+
+/**
  * 文件夹组内单个子任务的懒加载容器：与表头拼成同一张卡片。
  * 超过可视区域的子任务不会被组合，展开上千文件的文件夹时不再一次性构建全部行。
  */
@@ -898,6 +934,7 @@ private fun DownloadSubTaskRow(
                                 tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp)
                             )
                         }
+                        InstallDebIconButton(task.savePath, compact = true)
                     }
                 }
                 // 删除
@@ -1045,6 +1082,7 @@ private fun DownloadTaskCard(
                         }) {
                             Icon(Icons.Outlined.OpenInNew, contentDescription = "打开", tint = MaterialTheme.colorScheme.primary)
                         }
+                        InstallDebIconButton(task.savePath, compact = false)
                     }
                 }
             }

@@ -268,6 +268,14 @@ fun UpdateDialog(
                         }
                     }
                 }
+                if (linuxAsset != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "下载完成后：到下载页点该任务的「安装更新」图标，在系统弹窗输一次密码即完成覆盖安装，无需开终端。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 if (!hasCompatibleAsset) {
                     Text(
                         text = if (isWindows) {
