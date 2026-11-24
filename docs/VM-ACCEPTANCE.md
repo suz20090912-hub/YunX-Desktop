@@ -21,7 +21,7 @@ sudo dpkg -i desktop/build/compose/binaries/main/deb/yunx-desktop_1.3.4-1_amd64.
 `DEBIAN/control` 的关键字段：
 
 ```text
-Depends: ... libgtk-3-0 | libgtk-3-0t64, libnss3, libgbm1, libxss1,
+Depends: ... libasound2 | libasound2t64, libpng16-16 | libpng16-16t64, libgtk-3-0 | libgtk-3-0t64, libnss3, libgbm1, libxss1,
  libx11-xcb1, libxcomposite1, libxdamage1, libxrandr2,
  libatk-bridge2.0-0 | libatk-bridge2.0-0t64,
  libcups2 | libcups2t64, libdrm2

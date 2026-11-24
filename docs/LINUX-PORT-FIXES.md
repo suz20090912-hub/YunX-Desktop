@@ -125,7 +125,7 @@
 
 ## 按 tag 自动 Release（2026-11-24）
 
-- `.github/workflows/release-linux.yml`：推送 `v*` tag 时，在 Ubuntu 24.04 + JDK 17 上构建 deb，用 `gh release create` 创建 Release，并 `gh release upload --clobber` 上传 deb。
+- `.github/workflows/release-linux.yml`：推送 `v*` tag 时，在 Ubuntu 22.04 + JDK 17 上构建 deb；`patchDebDepends` 同时把 t64 包名归一化为带备选的依赖，用 `gh release create` 创建 Release，并 `gh release upload --clobber` 上传 deb。
 - 触发示例：`git tag v1.3.4-linux.1 && git push origin v1.3.4-linux.1`。
 - 版本说明见 `CHANGELOG.md`。
   - Deb 未随带 `jcef-natives.tar.gz`，首次运行从 classpath 解压约 325 MB。功能可用，但首启慢；若要优化，需要仿照 Windows `JcefNativesPacker` 在 Linux 打 deb 后重打包。

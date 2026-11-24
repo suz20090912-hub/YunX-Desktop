@@ -179,15 +179,15 @@ dpkg-deb -I desktop/build/compose/binaries/main/deb/*.deb | grep -E 'Depends|Rec
 
 ### 按 tag 自动发布
 
-仓库包含 `.github/workflows/release-linux.yml`。推送形如 `v1.3.4-linux.1` 的 tag 后，CI 会：
+仓库包含 `.github/workflows/release-linux.yml`。推送形如 `v1.3.4-linux.3` 的 tag 后，CI 会（固定 Ubuntu 22.04 runner）：
 
 1. 编译并执行 `packageDeb`；
 2. 自动创建 GitHub Release；
 3. 把 deb 上传为 Release 附件。
 
 ```bash
-git tag v1.3.4-linux.1
-git push origin v1.3.4-linux.1
+git tag v1.3.4-linux.3
+git push origin v1.3.4-linux.3
 ```
 
 Release 说明可用 `CHANGELOG.md` 对应段落，或让 GitHub 自动生成。
