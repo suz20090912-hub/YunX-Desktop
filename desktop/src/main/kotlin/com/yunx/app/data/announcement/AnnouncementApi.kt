@@ -271,6 +271,14 @@ object AnnouncementApi {
                 - Linux 版仓库：https://github.com/suz20090912-hub/YunX-Linux
                 - 问题反馈：https://github.com/suz20090912-hub/YunX-Linux/issues
                 - 上游 Windows 桌面版：https://github.com/tidain/YunX-Desktop
+
+                ### 声明
+
+                本版本（YunX-Linux）完全由上游 Windows 桌面版 YunX-Desktop 移植而来。
+
+                ### 免责声明
+
+                本应用仅供个人学习与技术交流使用，请勿用于任何商业用途。下载内容版权归原作者所有，请于下载后 24 小时内删除。使用本应用产生的任何后果由使用者自行承担。
             """.trimIndent(),
             coverImage = null,
             images = emptyList(),

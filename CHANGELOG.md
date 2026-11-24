@@ -3,6 +3,11 @@
 本文件只记录 Linux 版相对上游 Windows 桌面版的版本变化；完整移植细节见
 [Linux 移植记录](docs/LINUX-PORT-FIXES.md)。
 
+## v1.3.4-linux.6（2026-11-24，待发布）
+
+### 变更
+
+- Linux 版内置公告末尾追加声明：本版本完全由上游 Windows 桌面版 YunX-Desktop 移植；并复制关于页同款免责声明文案。
 ## v1.3.4-linux.5（2026-11-24，待发布）
 
 ### 变更
