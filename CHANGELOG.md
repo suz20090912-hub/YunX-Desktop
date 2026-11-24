@@ -3,7 +3,7 @@
 本文件只记录 Linux 版相对上游 Windows 桌面版的版本变化；完整移植细节见
 [Linux 移植记录](docs/LINUX-PORT-FIXES.md)。
 
-## v1.3.4-linux.8（2026-11-24，待发布）
+## v1.3.4-linux.8（2026-11-24，已发布）
 
 ### 修复
 
