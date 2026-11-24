@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yunx.app.ui.SnackbarController
 import com.yunx.app.ui.components.FadeAlertDialog
+import com.yunx.app.ui.openUrlWithFeedback
 import com.yunx.app.util.DesktopActions
 
 /**
@@ -318,7 +319,7 @@ fun SupportScreen(
             if (isLinuxOs) {
                 OutlinedButton(
                     onClick = {
-                        DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Linux")
+                        openUrlWithFeedback("https://github.com/suz20090912-hub/YunX-Linux")
                         SnackbarController.show("已打开 Linux 版仓库")
                     },
                     modifier = Modifier
@@ -340,7 +341,7 @@ fun SupportScreen(
             // ---------- 开源仓库入口 ----------
             Button(
                 onClick = {
-                    DesktopActions.openUrl("https://github.com/CYQawa/YunX")
+                    openUrlWithFeedback("https://github.com/CYQawa/YunX")
                     SnackbarController.show("已打开开源仓库页面")
                 },
                 modifier = Modifier
@@ -361,7 +362,7 @@ fun SupportScreen(
             // ---------- PC 版仓库入口 ----------
             OutlinedButton(
                 onClick = {
-                    DesktopActions.openUrl("https://github.com/tidain/YunX-Desktop")
+                    openUrlWithFeedback("https://github.com/tidain/YunX-Desktop")
                     SnackbarController.show("已打开 PC 版仓库")
                 },
                 modifier = Modifier

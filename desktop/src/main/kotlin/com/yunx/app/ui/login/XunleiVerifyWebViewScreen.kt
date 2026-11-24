@@ -17,6 +17,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.yunx.app.ui.openUrlWithFeedback
 import com.yunx.app.util.DesktopActions
 
 /**
@@ -53,7 +54,7 @@ fun XunleiVerifyWebViewScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedButton(
-                    onClick = { if (verifyUrl.isNotBlank()) DesktopActions.openUrl(verifyUrl) },
+                    onClick = { if (verifyUrl.isNotBlank()) openUrlWithFeedback(verifyUrl) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("打开验证页")

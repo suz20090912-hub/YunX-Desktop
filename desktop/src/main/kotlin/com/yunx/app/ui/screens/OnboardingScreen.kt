@@ -82,6 +82,7 @@ import com.yunx.app.APP_VERSION
 import com.yunx.app.ui.GlobalSnackbarHost
 import com.yunx.app.ui.SnackbarController
 import com.yunx.app.ui.theme.MotionPolicy
+import com.yunx.app.ui.openUrlWithFeedback
 import com.yunx.app.util.DesktopActions
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -360,7 +361,7 @@ private fun FactChip(text: String) {
 private fun GitHubCard() {
     Card(
         onClick = {
-            DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Linux")
+            openUrlWithFeedback("https://github.com/suz20090912-hub/YunX-Linux")
         },
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,

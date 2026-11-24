@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.yunx.app.ui.SnackbarController
 import com.yunx.app.ui.jcef.JcefHolder
 import com.yunx.app.ui.GlobalSnackbarHost
+import com.yunx.app.ui.openUrlWithFeedback
 import com.yunx.app.util.DesktopActions
 import kotlinx.coroutines.launch
 
@@ -197,7 +198,7 @@ fun CookieLoginContent(
                     modifier = Modifier.fillMaxWidth()
                 )
                 TextButton(
-                    onClick = { DesktopActions.openUrl(loginUrl) },
+                    onClick = { openUrlWithFeedback(loginUrl) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Outlined.OpenInNew, contentDescription = null)

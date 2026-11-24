@@ -225,8 +225,12 @@ object DesktopActions {
         return File(File(System.getProperty("user.dir") ?: "."), "YunX-Desktop.exe").takeIf { it.isFile }
     }
 
-    /** 用系统默认浏览器打开链接；Linux 走 xdg-open（awt Desktop.browse 依赖老 GNOME 库，现代发行版静默失败） */
-    fun openUrl(url: String) {
+    /**
+     * 用系统默认浏览器打开链接；Linux 走 xdg-open（awt Desktop.browse 依赖老 GNOME 库，现代发行版静默失败）。
+     * 返回是否成功拉起；Linux 上浏览器可能只在后台开标签不前台（焦点抢占限制），
+     * 这里尽力激活浏览器窗口，调用方另用 Snackbar 告知用户"已打开"，避免点了像没反应。
+     */
+    fun openUrl(url: String): Boolean {
         val os = System.getProperty("os.name", "").lowercase()
         val launched = runCatching {
             when {
@@ -238,9 +242,39 @@ object DesktopActions {
                 }
             }
         }.isSuccess
-        if (!launched) {
-            runCatching { java.awt.Desktop.getDesktop().browse(URI(url)) }
-                .onFailure { Log.w("YunX-Desktop", "打开链接失败：$url（${it.message}）") }
+        if (launched) {
+            raiseBrowserWindow()
+            return true
+        }
+        val fallback = runCatching { java.awt.Desktop.getDesktop().browse(URI(url)) }.isSuccess
+        if (fallback) raiseBrowserWindow()
+        else Log.w("YunX-Desktop", "打开链接失败：$url")
+        return fallback
+    }
+
+    /**
+     * 开链接后尽力把浏览器窗口拉到前台（仅 X11 且装了 xdotool 时生效）。
+     * Wayland / 无 xdotool 时静默跳过——那种环境不允许跨应用激活窗口，由调用方文案兜底提示。
+     * 所有子进程等待都有 2s 上限，不会卡 UI。
+     */
+    private fun raiseBrowserWindow() {
+        val os = System.getProperty("os.name", "").lowercase()
+        if (!(os.contains("linux") || os.contains("nix"))) return
+        for (cls in listOf("firefox", "Google-chrome", "chromium", "Microsoft-edge")) {
+            val done = runCatching {
+                val search = ProcessBuilder("xdotool", "search", "--onlyvisible", "--class", cls).start()
+                val ids = search.inputStream.bufferedReader().readText().trim()
+                if (!search.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                    search.destroyForcibly()
+                    return@runCatching false
+                }
+                val id = ids.lines().firstOrNull { it.isNotBlank() } ?: return@runCatching false
+                val act = ProcessBuilder("xdotool", "windowactivate", id).start()
+                act.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)
+                ProcessBuilder("xdotool", "windowraise", id).start()
+                true
+            }.getOrDefault(false)
+            if (done) return
         }
     }
 

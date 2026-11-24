@@ -56,6 +56,7 @@ import com.yunx.app.APP_IS_PREVIEW
 import com.yunx.app.ui.BackHandler
 import com.yunx.app.ui.SnackbarController
 import com.yunx.app.data.update.UpdateChecker
+import com.yunx.app.ui.openUrlWithFeedback
 import com.yunx.app.util.DesktopActions
 
 /** QQ 交流群群号（关于页入口；桌面端无 mqqapi scheme 保证，点击复制群号供用户在 QQ 中搜索） */
@@ -582,7 +583,7 @@ private fun CardIcon(icon: ImageVector) {
 private fun GitHubCard() {
     Card(
         onClick = {
-            DesktopActions.openUrl("https://github.com/CYQawa/YunX")
+            openUrlWithFeedback("https://github.com/CYQawa/YunX")
         },
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -638,7 +639,7 @@ private fun GitHubCard() {
 private fun DesktopRepoCard() {
     Card(
         onClick = {
-            DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Linux")
+            openUrlWithFeedback("https://github.com/suz20090912-hub/YunX-Linux")
         },
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,

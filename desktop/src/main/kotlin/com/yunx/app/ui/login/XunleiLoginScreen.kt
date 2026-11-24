@@ -3,6 +3,7 @@ package com.yunx.app.ui.login
 import com.yunx.app.ui.BackHandler
 import com.yunx.app.ui.SnackbarController
 import com.yunx.app.ui.GlobalSnackbarHost
+import com.yunx.app.ui.openUrlWithFeedback
 import com.yunx.app.util.DesktopActions
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -276,7 +277,7 @@ fun XunleiLoginScreen(
             // 未设置密码：跳转迅雷官网设置（浏览器打开）
             TextButton(
                 onClick = {
-                    DesktopActions.openUrl("https://i.xunlei.com/xluser/validate/findpwd_acc.html")
+                    openUrlWithFeedback("https://i.xunlei.com/xluser/validate/findpwd_acc.html")
                 },
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {

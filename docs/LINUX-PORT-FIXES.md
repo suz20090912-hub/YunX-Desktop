@@ -186,3 +186,9 @@ curl -s http://127.0.0.1:18899/api/v1/info
 - 现象：Linux 真机点关于页 / 支持页仓库链接无任何反应；复制 QQ 号正常（剪贴板不经过 awt Desktop）。
 - 根因：`java.awt.Desktop.browse/open` 在 X11 下依赖老 GNOME 库（libgnome-2 系），现代 Ubuntu 默认不装 → 抛异常；原代码 runCatching 静默吞掉。
 - 修复：`openUrl` / `openFile` 在 Linux 走 `xdg-open`（xdg-utils 已在 deb Depends）、macOS 走 `open`，Windows 保持 awt；启动失败回退 awt 并记 W 级日志。
+
+## 外链前台激活与点击反馈（2026-11-24，v1.3.4-linux.10）
+
+- 真机复核更正：.8 上点链接**其实拉起了浏览器**（后台堆标签），但窗口不前台、应用无反馈，观感即"没反应"。
+- `openUrl` 返回 Boolean；Linux 拉起后 `raiseBrowserWindow()` 用 xdotool 按浏览器 class（firefox/Google-chrome/chromium/Microsoft-edge）search + windowactivate + windowraise，全部 2s 上限；Wayland / 无 xdotool 静默跳过。
+- 新增 `ui/UrlOpener.kt` 的 `openUrlWithFeedback`：成功/失败 Snackbar；9 处外链调用点全部改走它。
