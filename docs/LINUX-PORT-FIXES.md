@@ -156,3 +156,9 @@ gsettings get org.gnome.system.proxy mode
 # gopeed 内核探活
 curl -s http://127.0.0.1:18899/api/v1/info
 ```
+
+## 公告本地化（2026-11-24，v1.3.4-linux.4）
+
+- 上游公告服务（`yunx.cyqawa.os.kg`）只发布上游自己的公告，且明文 HTTP 在代理 fake-ip / 断网环境下必然连接超时。
+- Linux 版 `AnnouncementApi` 改为内置公告源：`fetchPage` / `fetchDetail` 直接返回随包内置的 Linux 版公告（置顶发布说明 + 使用须知），对外签名不变，ViewModel / UI / 已读记录（`AnnouncementReadStore`）零改动。
+- 更新公告的方式改为修改内置列表并发新版；新公告 id 自动算未读并触发启动弹窗。
