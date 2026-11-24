@@ -13,7 +13,7 @@ Range 分片并发 + 断点续传，B 站高清自动合轨。
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-FCC624?style=flat-square\&logo=linux\&logoColor=black)](#linux-版说明)
 [![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=flat-square\&logo=kotlin\&logoColor=white)](https://kotlinlang.org/)
-[![Compose](https://img.shields.io/badge/Compose%20Multiplatform-Desktop-4285F4?style=flat-square\&logo=jetpackcompose\&logoColor=white)](https://www.jetbrains.com/lp/compose-multiplatform/)
+[![Compose](https://img.shields.io/badge/Compose%20Multiplatform-4285F4?style=flat-square\&logo=jetpackcompose\&logoColor=white)](https://www.jetbrains.com/lp/compose-multiplatform/)
 
 [下载最新版](https://github.com/suz20090912-hub/YunX-Linux/releases/latest) · [功能](#功能) · [Linux 构建](docs/BUILD-LINUX.md) · [移植记录](docs/LINUX-PORT-FIXES.md) · [与安卓版差异](docs/UPSTREAM-DIFF.md)
 
