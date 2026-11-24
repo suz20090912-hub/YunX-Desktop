@@ -21,6 +21,7 @@ object WindowsToastNotifier {
     private const val UPDATE_THROTTLE_MS = 1000L
 
     private val isWindows = System.getProperty("os.name").lowercase().contains("win")
+    private val isLinux = System.getProperty("os.name").lowercase().contains("linux")
     /** 测试/无头环境可关闭通知交互（默认开启；不影响下载本身） */
     @Volatile
     var enabled: Boolean = true
@@ -147,7 +148,15 @@ object WindowsToastNotifier {
     @Synchronized
     fun sessionEnd() {
         if (!enabled) return
-        if (!isWindows) return
+        if (!isWindows) {
+            // Linux：没有 WinRT toast，用 notify-send 补一条「全部完成」通知
+            val completed = lastTotalSum > 0 && lastDoneSum >= lastTotalSum
+            lastDoneSum = 0; lastTotalSum = 0
+            if (completed && isLinux) {
+                DesktopNotifier.show("云析 · 下载完成", "全部任务已下载完毕")
+            }
+            return
+        }
         val completed = lastTotalSum > 0 && lastDoneSum >= lastTotalSum
         lastDoneSum = 0; lastTotalSum = 0
         if (completed) {

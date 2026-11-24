@@ -183,7 +183,7 @@ class DownloadViewModel(private val manager: DownloadManager) : ViewModel() {
             shutdownJob = null
             _shutdownCountdown.value = null
             shutdownArmed = false
-            if (!ok) SnackbarController.show("自动关机失败：当前系统不支持")
+            if (!ok) SnackbarController.show("自动关机失败：请检查系统电源管理权限")
         }
     }
 

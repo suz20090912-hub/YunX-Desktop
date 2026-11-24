@@ -59,7 +59,26 @@ object SingleInstance {
      * 找不到窗口（例如它正在启动 / 已最小化到托盘）时短暂重试几次。
      */
     fun focusExistingWindow() {
-        if (!System.getProperty("os.name", "").lowercase().contains("win")) return
+        val osName = System.getProperty("os.name", "").lowercase()
+        if (osName.contains("linux")) {
+            // 等第一实例把窗口建出来；X11/EWMH 能按标题找到并激活，纯 Wayland 原生窗口则退化通知
+            repeat(6) { attempt ->
+                if (LinuxWindowFocus.activate(WINDOW_TITLE)) {
+                    Log.i(TAG, "已有实例在运行，已激活其窗口")
+                    return
+                }
+                if (attempt < 5) Thread.sleep(250L)
+            }
+            DesktopNotifier.show("云析已在运行", "主窗口可能已最小化到托盘，请从任务栏或托盘图标恢复")
+            Log.w(TAG, "已有实例在运行，但没能激活窗口（可能是 Wayland 或无 WM 环境），已发送提示")
+            return
+        }
+        if (!osName.contains("win")) {
+            // macOS 没有现成的「按标题找窗口」能力：至少发一条桌面通知，避免双击后毫无反应
+            DesktopNotifier.show("云析已在运行", "主窗口可能已最小化到托盘，请从任务栏或托盘图标恢复")
+            Log.w(TAG, "已有实例在运行（macOS 无法自动还原窗口，已发送提示）")
+            return
+        }
         repeat(6) { attempt ->
             val hwnd = runCatching { User32.INSTANCE.FindWindow(null, WINDOW_TITLE) }.getOrNull()
             if (hwnd != null) {

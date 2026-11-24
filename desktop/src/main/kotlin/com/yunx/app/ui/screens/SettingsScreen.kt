@@ -91,6 +91,8 @@ import com.yunx.app.util.DesktopActions
 import com.yunx.app.util.DiagnosticLog
 import com.yunx.app.util.Log
 import com.yunx.app.util.LogExporter
+import com.yunx.app.util.TrayManager
+import com.yunx.app.util.WindowsTitleBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -186,6 +188,9 @@ fun SettingsScreen(
     // 线程数弹窗的排布：一列 / 两列（右上角切换）
     var threadGridTwoColumns by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val isLinuxOs = remember {
+        System.getProperty("os.name", "").lowercase().contains("linux")
+    }
     // 下载保存目录：本地状态驱动 UI 刷新，同时同步 Preferences
     val settingsRepo = remember { SettingsRepository() }
     var downloadDirUri by remember { mutableStateOf(settingsRepo.downloadDirUri) }
@@ -317,16 +322,33 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        SettingsItem(
-            icon = Icons.Outlined.Notifications,
-            title = "通知中心下载进度",
-            description = if (showSpeed) "Windows 通知中心进度条 + 下载速度" else "Windows 通知中心仅显示进度条（隐藏速度）",
-            onClick = {
-                showSpeed = !showSpeed
-                settingsRepo.notificationShowSpeed = showSpeed
-            },
-            trailing = { Switch(checked = showSpeed, onCheckedChange = null) }
-        )
+        if (WindowsTitleBar.isWindows) {
+            SettingsItem(
+                icon = Icons.Outlined.Notifications,
+                title = "通知中心下载进度",
+                description = if (showSpeed) "Windows 通知中心进度条 + 下载速度" else "Windows 通知中心仅显示进度条（隐藏速度）",
+                onClick = {
+                    showSpeed = !showSpeed
+                    settingsRepo.notificationShowSpeed = showSpeed
+                },
+                trailing = { Switch(checked = showSpeed, onCheckedChange = null) }
+            )
+        } else {
+            // Linux 没有 Windows 通知中心式的内嵌进度条：只在全部任务完成时发一条桌面通知。
+            SettingsItem(
+                icon = Icons.Outlined.Notifications,
+                title = "下载完成通知",
+                description = "全部任务完成时发送桌面通知；Linux 通知不显示进度条，下载进度仍在应用内查看",
+                onClick = {},
+                trailing = {
+                    Text(
+                        text = "自动",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            )
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -347,7 +369,9 @@ fun SettingsScreen(
             icon = Icons.Outlined.Minimize,
             title = "关闭窗口时",
             description = when (closeBehavior) {
-                SettingsRepository.CLOSE_BEHAVIOR_TRAY -> "最小化到系统托盘（下载继续）"
+                SettingsRepository.CLOSE_BEHAVIOR_TRAY ->
+                    if (TrayManager.isSupported) "最小化到系统托盘（下载继续）"
+                    else "当前桌面没有系统托盘，关闭时直接退出"
                 SettingsRepository.CLOSE_BEHAVIOR_EXIT -> "直接退出应用"
                 else -> "每次询问（默认）"
             },
@@ -531,7 +555,7 @@ fun SettingsScreen(
         SettingsItem(
             icon = Icons.Outlined.VolunteerActivism,
             title = "支持开发",
-            description = "微信扫码捐赠，支持项目持续维护",
+            description = if (isLinuxOs) "Linux 版不设赞助渠道，可赞助上游作者" else "微信扫码捐赠，支持项目持续维护",
             onClick = onSupportClick
         )
     }
@@ -1161,11 +1185,14 @@ fun SettingsScreen(
         onDismissRequest = { showCloseBehaviorDialog = false },
         title = { Text("关闭窗口时") },
         text = {
-            val options = listOf(
-                SettingsRepository.CLOSE_BEHAVIOR_ASK to "每次询问",
-                SettingsRepository.CLOSE_BEHAVIOR_EXIT to "直接退出应用",
-                SettingsRepository.CLOSE_BEHAVIOR_TRAY to "最小化到系统托盘"
-            )
+            val options = buildList {
+                add(SettingsRepository.CLOSE_BEHAVIOR_ASK to "每次询问")
+                add(SettingsRepository.CLOSE_BEHAVIOR_EXIT to "直接退出应用")
+                // GNOME 默认不提供系统托盘：没有托盘时隐藏该选项，否则隐藏窗口后无法再唤回。
+                if (TrayManager.isSupported) {
+                    add(SettingsRepository.CLOSE_BEHAVIOR_TRAY to "最小化到系统托盘")
+                }
+            }
             Column {
                 options.forEach { (value, label) ->
                     Row(
@@ -1400,7 +1427,11 @@ fun SettingsScreen(
                     }
                     Text(
                         text = "代理用于加速 GitHub 等海外资源；不使用代理时所有请求直连。" +
-                            "系统代理取自 Windows 系统设置，仅在启动或切换设置时读取一次。" +
+                            (if (WindowsTitleBar.isWindows) {
+                                "系统代理取自 Windows 系统设置，仅在启动或切换设置时读取一次。"
+                            } else {
+                                "系统代理读取 GNOME 网络设置或 http_proxy / https_proxy 环境变量，仅在启动或切换设置时读取一次。"
+                            }) +
                             "（暂不支持 PAC 脚本与绕过列表）",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1474,7 +1505,7 @@ fun SettingsScreen(
 private fun describeSystemProxy(info: SystemProxy.Inspect?): String = when (info) {
     is SystemProxy.Inspect.Proxy -> "${info.host}:${info.port}"
     SystemProxy.Inspect.PacUnsupported -> "检测到 PAC 脚本，暂不支持，按直连处理"
-    SystemProxy.Inspect.Unavailable -> "当前平台不支持，按直连处理"
+    SystemProxy.Inspect.Unavailable -> "系统代理读取失败，按直连处理"
     else -> "未检测到系统代理，按直连处理"
 }
 

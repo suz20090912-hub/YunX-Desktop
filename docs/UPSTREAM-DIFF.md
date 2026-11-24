@@ -1,7 +1,10 @@
 # 与上游的差异（Windows 桌面版 vs Android 版）
 
+> Linux 版说明：本文描述 Windows 桌面版相对 Android 版的新增 / 重做 / 移除；Linux 版沿用同一套桌面功能，平台差异见 [Linux 移植记录](LINUX-PORT-FIXES.md)。
+
 - 上游（Android）：[CYQawa/YunX](https://github.com/CYQawa/YunX)
-- 本仓库（Windows 桌面移植）：[tidain/YunX-Desktop](https://github.com/tidain/YunX-Desktop)
+- Linux 版仓库：[suz20090912-hub/YunX-Desktop](https://github.com/suz20090912-hub/YunX-Desktop)
+- 上游 Windows 桌面版：[tidain/YunX-Desktop](https://github.com/tidain/YunX-Desktop)
 
 **沿用上游的部分**：网盘分享链接的解析协议、下载引擎（Range 分片并发、弹性区按字节顺序分配、
 断点续传、失败重试、全局限速）、界面框架与主题体系（Compose + Material 3、深色模式 + 种子色）、

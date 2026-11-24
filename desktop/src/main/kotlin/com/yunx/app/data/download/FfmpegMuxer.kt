@@ -21,6 +21,12 @@ object FfmpegMuxer {
 
     private const val TAG = "YunX-FfmpegMux"
 
+    /**
+     * FFmpeg 引擎（ffplay / ffmpeg 精简包）在本平台是否可用。
+     * 官方精简包只提供 Windows 构建（ffplay.exe / ffmpeg.exe），Linux / macOS 上不提供下载安装。
+     */
+    fun isEngineSupported(): Boolean = FfplayManager.isWindows()
+
     /** 合轨超时（10 分钟；`-c copy` 只是重封装，正常远小于此） */
     private const val MUX_TIMEOUT_SECONDS = 600L
 

@@ -888,6 +888,9 @@ class DownloadManager(
      */
     private fun p2pBlockReason(isP2P: Boolean): String? {
         if (!isP2P) return null
+        if (!GopeedEngine.isSupported) {
+            return "磁力 / ed2k / BT 种子下载依赖 Gopeed 内核，当前系统暂不支持（官方只提供 Windows / Linux 内核）"
+        }
         if (!GopeedEngine.isInstalled()) {
             return "磁力 / ed2k / BT 种子下载需要先在「设置 → 下载 → 下载引擎」里导入 Gopeed 内核"
         }
@@ -1146,6 +1149,18 @@ class DownloadManager(
 
     /** 已计入保活/通知计数的引擎任务：保证 onTaskStarted / onTaskFinished 恰好各配一次 */
     private val engineRunningIds = ConcurrentHashMap.newKeySet<Long>()
+
+    /**
+     * 引擎任务连续查询失败计数（taskId → 连续失败次数）。
+     *
+     * 引擎侧任务被清掉 / 内核崩溃 / 存储锁被孤儿进程占用时，`GET /api/v1/tasks/{id}` 会持续失败。
+     * 旧实现只是打一条日志 `continue`，本地任务永远停在「下载中」——界面看起来像卡死，
+     * 而且每秒刷一条日志。这里按秒累计，超过 [engineStatusMissLimit] 就收敛成失败终态。
+     */
+    private val engineMissCounts = ConcurrentHashMap<Long, Int>()
+
+    /** 连续失败多少次判定为僵尸任务（1s 轮询 ⇒ 10s，足够容忍引擎重启与瞬时 5xx） */
+    private val engineStatusMissLimit = 10
 
     private val engineSyncLock = Any()
     private var engineSyncJob: Job? = null
@@ -1463,9 +1478,33 @@ class DownloadManager(
                 }
                 val view = viewResult.getOrNull()
                 if (view == null) {
-                    Log.w(TAG, "引擎同步：查询任务 $engineId 失败：${viewResult.exceptionOrNull()?.message}")
+                    val misses = (engineMissCounts[task.id] ?: 0) + 1
+                    engineMissCounts[task.id] = misses
+                    if (misses >= engineStatusMissLimit) {
+                        // 终态收敛：不能让任务永远停在「下载中」。
+                        val reason = "引擎连续 ${misses}s 无法返回任务状态（内核可能已崩溃或被清理），已标记失败"
+                        Log.w(TAG, "引擎同步：任务 ${task.id}（engineId=$engineId）连续 $misses 次失败，收敛为失败：$reason")
+                        DiagnosticLog.error(
+                            DiagnosticLog.DOWNLOAD, "engine_task_failed", code = "ENGINE_UNREACHABLE",
+                            summary = "task=${task.id} engineId=$engineId 连续 $misses 次查询失败"
+                        )
+                        dao.updateStatus(task.id, DownloadTaskEntity.STATUS_FAILED)
+                        dao.updateError(task.id, reason)
+                        DownloadDebugLog.record(task.id, "失败", reason)
+                        engineMissCounts.remove(task.id)
+                        engineTaskIds.remove(task.id)
+                        finishEngineTask(task.id)
+                    } else {
+                        Log.w(
+                            TAG,
+                            "引擎同步：查询任务 $engineId 失败（第 $misses/$engineStatusMissLimit 次）：" +
+                                "${viewResult.exceptionOrNull()?.message}"
+                        )
+                    }
                     continue
                 }
+                // 查询恢复：清零连续失败计数，避免偶发 5xx 累积成误判
+                engineMissCounts.remove(task.id)
                 when (view.status) {
                     GopeedEngine.TaskStatus.DONE -> completeEngineTask(task, view)
                     GopeedEngine.TaskStatus.ERROR -> {
@@ -2676,7 +2715,7 @@ class DownloadManager(
         val mergeDir = AppContext.mergeDir.apply { mkdirs() }
         val videoFile = File(mergeDir, "dash_video_$id")
         val audioFile = File(mergeDir, "dash_audio_$id")
-        val mergedFile = File(mergeDir, "dash_merged_$id")
+        val mergedFile = File(mergeDir, "dash_merged_$id.mp4")
         // 音轨头：内存表优先（入队/恢复时写入）；进程重启后从加密落库字段解回；都没有就不带头
         val audioHeaders = taskMergeAudioHeaders[id]
             ?: loadPersistedMergeAudioHeaders(task.mergeAudioHeadersJson)

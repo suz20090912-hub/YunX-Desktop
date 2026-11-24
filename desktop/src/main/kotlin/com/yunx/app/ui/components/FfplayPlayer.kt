@@ -308,20 +308,28 @@ private fun FfplayUnavailablePanel(onInstalled: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "未检测到 FFplay（FFmpeg 套件）",
+            text = if (FfplayManager.isWindows()) "未检测到 FFplay（FFmpeg 套件）" else "未找到系统里的 ffplay",
             color = Color(0xFFE6E6E6),
             style = MaterialTheme.typography.titleMedium
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "在线预览（边下边播）需要 ffplay。可一键下载 FFmpeg 精简版到本应用私有目录，" +
-                "不会改动系统环境变量。",
+            text = if (FfplayManager.isWindows()) {
+                "在线预览（边下边播）需要 ffplay。可一键下载 FFmpeg 精简版到本应用私有目录，" +
+                    "不会改动系统环境变量。"
+            } else {
+                "在线预览（边下边播）需要系统里的 ffplay。请在终端执行：\n\n" +
+                    "sudo apt install ffmpeg\n\n" +
+                    "装完点下面的「重新检测」（不用重启应用）。"
+            },
             color = Color(0xFF9E9E9E),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(16.dp))
-        if (downloading) {
+        if (!FfplayManager.isWindows()) {
+            Button(onClick = { message = null; onInstalled() }) { Text("重新检测") }
+        } else if (downloading) {
             if (total > 0) {
                 LinearProgressIndicator(
                     progress = { (read.toFloat() / total.toFloat()).coerceIn(0f, 1f) },
@@ -376,7 +384,11 @@ private fun FfplayUnavailablePanel(onInstalled: () -> Unit) {
         }
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "也可以自行安装 FFmpeg（或把 ffplay.exe 所在目录加入 PATH）后重新打开预览。",
+            text = if (FfplayManager.isWindows()) {
+                "也可以自行安装 FFmpeg（或把 ffplay.exe 所在目录加入 PATH）后重新打开预览。"
+            } else {
+                "也可以自行安装 FFmpeg（确保 ffplay 在系统 PATH 中）后点「重新检测」。"
+            },
             color = Color(0xFF6E6E6E),
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center

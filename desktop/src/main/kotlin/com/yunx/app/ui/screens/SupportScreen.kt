@@ -70,6 +70,9 @@ fun SupportScreen(
 
     // 赞赏码放大查看（点击小图弹出大图对话框，方便手机扫码）
     var zoomedQr by remember { mutableStateOf<String?>(null) }
+    val isLinuxOs = remember {
+        System.getProperty("os.name", "").lowercase().contains("linux")
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -144,6 +147,38 @@ fun SupportScreen(
                 }
             }
 
+            // ---------- Linux 版赞助说明 ----------
+            if (isLinuxOs) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Linux 版说明",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            text = "本项目由于完全移植于 desktop 版，故不设置赞助渠道。" +
+                                "如有想要赞助的想法，请赞助下面两位上游作者。",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            lineHeight = 21.sp
+                        )
+                    }
+                }
+            }
+
             // ---------- 捐赠信息卡片 ----------
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -167,7 +202,7 @@ fun SupportScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "微信扫码捐赠",
+                            text = if (isLinuxOs) "微信扫码赞助（安卓版 / 桌面端作者）" else "微信扫码捐赠",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium
                         )
@@ -278,6 +313,29 @@ fun SupportScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
+
+            // ---------- Linux 版仓库入口 ----------
+            if (isLinuxOs) {
+                OutlinedButton(
+                    onClick = {
+                        DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Desktop")
+                        SnackbarController.show("已打开 Linux 版仓库")
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.OpenInNew,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Linux 版仓库")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             // ---------- 开源仓库入口 ----------
             Button(

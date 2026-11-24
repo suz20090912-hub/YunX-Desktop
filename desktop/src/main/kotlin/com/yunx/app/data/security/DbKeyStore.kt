@@ -1,6 +1,7 @@
 package com.yunx.app.data.security
 
 import com.yunx.app.util.Log
+import com.yunx.app.util.UnixPermissions
 import com.sun.jna.platform.win32.Advapi32Util
 import com.sun.jna.platform.win32.Crypt32Util
 import com.sun.jna.platform.win32.WinReg
@@ -34,13 +35,26 @@ enum class DbEncryptionLevel(val id: String, val label: String) {
     STRICT("strict", "较为严格"),
     STRICTEST("strictest", "严格");
 
-    /** 该档位在当前系统上是否可用（严格档需要 SQLCipher 原生库，暂未支持） */
-    val isSupported: Boolean get() = this != STRICTEST
+    /**
+     * 该档位在当前系统上是否可用：
+     * - [STRICT] 依赖 Windows DPAPI，Linux/macOS 上没有等价实现 —— 若仍标为可用，用户一点就会
+     *   在 `wrapDpapi` 抛 IllegalArgumentException；
+     * - [STRICTEST] 依赖 SQLCipher 原生库，暂未实现。
+     */
+    val isSupported: Boolean get() = when (this) {
+        STRICTEST -> false
+        STRICT -> isWindowsOs
+        else -> true
+    }
 
     /** 密钥是否绑定本机（换机器后凭证将无法解密，需重新登录） */
-    val isMachineBound: Boolean get() = this == NORMAL || this == STRICT
+    val isMachineBound: Boolean get() = this == NORMAL || (this == STRICT && isWindowsOs)
 
     companion object {
+        /** DPAPI 是 Windows 专有 API；Linux 上「较为严格」档必须置灰，不能只是文案提示。 */
+        internal val isWindowsOs: Boolean
+            get() = System.getProperty("os.name", "").lowercase().contains("win")
+
         fun fromId(id: String?): DbEncryptionLevel =
             entries.firstOrNull { it.id == id } ?: NORMAL
     }
@@ -157,6 +171,8 @@ object DbKeyStore {
             // 少数文件系统不支持原子移动：退化为普通替换
             Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
         }
+        // linux-port：密钥 600（默认 umask 022 会写出 644，同机其它用户可读）
+        UnixPermissions.restrictFile(file)
         Log.i(TAG, "凭证密钥已按「${level.label}」档写入：${file.name}")
     }
 
@@ -212,17 +228,34 @@ object DbKeyStore {
         append(System.getProperty("os.arch").orEmpty()).append('|')
         append(
             machineGuid() ?: throw MachineFingerprintUnavailable(
-                "暂时读不到 MachineGuid，本次不做密钥解包（下次会重试）"
+                "暂时读不到机器唯一标识，本次不做密钥解包（下次会重试）"
             )
         )
     }
 
-    /** Windows MachineGuid（HKLM\SOFTWARE\Microsoft\Cryptography），普通用户可读 */
-    private fun machineGuid(): String? = runCatching {
-        Advapi32Util.registryGetStringValue(
-            WinReg.HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Cryptography", "MachineGuid"
-        ).takeIf { it.isNotBlank() }
-    }.getOrNull()
+    /**
+     * 机器唯一标识：
+     * - Windows：注册表 HKLM\SOFTWARE\Microsoft\Cryptography 的 MachineGuid（普通用户可读）；
+     * - Linux / 其他 POSIX：`/etc/machine-id`（systemd 安装时生成，重装系统才会变），
+     *   老系统退回 `/var/lib/dbus/machine-id`。
+     * 两边都读不到时返回 null，调用方按「暂时不可用」处理（绝不据此更换主密钥）。
+     */
+    private fun machineGuid(): String? {
+        if (!isWindows()) {
+            for (path in listOf("/etc/machine-id", "/var/lib/dbus/machine-id")) {
+                val value = runCatching {
+                    File(path).takeIf { it.isFile }?.readText()?.trim()
+                }.getOrNull()
+                if (!value.isNullOrBlank()) return value
+            }
+            return null
+        }
+        return runCatching {
+            Advapi32Util.registryGetStringValue(
+                WinReg.HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Cryptography", "MachineGuid"
+            ).takeIf { it.isNotBlank() }
+        }.getOrNull()
+    }
 
     /** 较为严格档：Windows DPAPI（CryptProtectData，绑定当前登录用户） */
     private fun wrapDpapi(key: ByteArray): String {

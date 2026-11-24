@@ -52,7 +52,10 @@ class DbKeyStoreTest {
         assertEquals(DbEncryptionLevel.NORMAL, DbEncryptionLevel.fromId("不存在的档位"))
         assertFalse(DbEncryptionLevel.STRICTEST.isSupported)
         assertTrue(DbEncryptionLevel.NORMAL.isMachineBound)
-        assertTrue(DbEncryptionLevel.STRICT.isMachineBound)
+        // 「较为严格」依赖 Windows DPAPI：Linux 上既不可用，也不应被标记为绑定本机
+        val isWindows = DbEncryptionLevel.isWindowsOs
+        assertEquals(isWindows, DbEncryptionLevel.STRICT.isSupported)
+        assertEquals(isWindows, DbEncryptionLevel.STRICT.isMachineBound)
         assertFalse("宽松档必须能跨机器使用，不能被判为绑定本机", DbEncryptionLevel.LOOSE.isMachineBound)
     }
 }

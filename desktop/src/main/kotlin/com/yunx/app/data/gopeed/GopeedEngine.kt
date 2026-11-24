@@ -63,7 +63,12 @@ object GopeedEngine {
 
     private const val TAG = "GopeedEngine"
     private const val DIR_NAME = "gopeed"
-    private const val EXE_NAME = "gopeed.exe"
+    /** 内核文件名：Windows 是 gopeed.exe，Linux / macOS 是不带后缀的 gopeed */
+    private val EXE_NAME: String
+        get() = if (isWindowsOs()) "gopeed.exe" else "gopeed"
+
+    private fun isWindowsOs(): Boolean =
+        System.getProperty("os.name", "").lowercase().contains("win")
     private const val BIN_DIR_NAME = "bin"
 
     /** 引擎 HTTP 协议的默认 UA（与 gopeed 自带默认一致）：任务未自带 UA 时使用，避免空 UA 被 CDN 限速 */
@@ -128,7 +133,14 @@ object GopeedEngine {
 
     private fun pidFile(): File = File(engineDir(), "engine.pid")
 
-    fun isInstalled(): Boolean = exeFile().isFile
+    /** 内核是否在当前平台可用：官方提供 Windows / Linux 两套包（macOS 暂无对应资产） */
+    val isSupported: Boolean
+        get() {
+            val os = System.getProperty("os.name", "").lowercase()
+            return os.contains("win") || os.contains("linux")
+        }
+
+    fun isInstalled(): Boolean = isSupported && exeFile().isFile
 
     /** 内核体积（引擎页展示用） */
     fun kernelSize(): Long = exeFile().takeIf { it.isFile }?.length() ?: 0L
@@ -173,11 +185,12 @@ object GopeedEngine {
                 }
             }
             if (!found) {
-                throw IllegalStateException("压缩包里没有找到 $EXE_NAME（请使用 Gopeed 官方 windows-amd64 包）")
+                throw IllegalStateException("压缩包里没有找到 $EXE_NAME（请使用 Gopeed 官方对应平台的 web 包）")
             }
         } else {
             archive.copyTo(target, overwrite = true)
         }
+        if (!isWindowsOs()) runCatching { target.setExecutable(true, false) }
         lastError = null
         _state.value = State.INSTALLED
         Log.i(TAG, "内核已导入：${target.absolutePath}（${kernelSize()} 字节）")
@@ -254,24 +267,39 @@ object GopeedEngine {
         }
     }
 
-    /** 停止引擎（幂等）：先正常结束，超时强杀；非 Windows 平台行为一致 */
+    /**
+     * 停止引擎（幂等）：先正常结束，超时强杀；非 Windows 平台行为一致。
+     *
+     * ★ 顺序必须是「先杀进程、再删 pid 文件」：旧实现先删 pid 再判断 `process`，
+     *   当本进程没有句柄（引擎是上一次启动留下的孤儿，或 stop 与 start 跨实例）时，
+     *   删掉 pid 就等于把唯一的清理线索丢了 —— 孤儿继续占着 bolt 存储锁，
+     *   下次启动 `killStaleProcess()` 找不到它，只能等 20s 超时。
+     */
     fun stop() {
         val p = process
         process = null
-        pidFile().takeIf { it.isFile }?.delete()
         port = 0
+        val pidFromFile = pidFile().takeIf { it.isFile }?.readText()?.trim()?.toLongOrNull()
         if (p != null) {
-            runCatching {
-                p.destroy()
-                if (!p.waitFor(STOP_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-                    Log.w(TAG, "引擎未在 ${STOP_TIMEOUT_MS}ms 内退出，强制结束")
-                    p.destroyForcibly()
-                    p.waitFor(2, TimeUnit.SECONDS)
-                }
-            }.onFailure { Log.w(TAG, "停止引擎异常：${it.message}") }
+            destroyProcess(p)
+        } else if (pidFromFile != null) {
+            // 没有自己的句柄也尝试按 pid 清理（只会杀「可执行文件路径＝本应用内核」的进程）
+            killPidIfOurs(pidFromFile)
         }
+        runCatching { pidFile().delete() }
         if (_state.value == State.RUNNING) _state.value = State.INSTALLED
         Log.i(TAG, "引擎已停止")
+    }
+
+    private fun destroyProcess(p: Process) {
+        runCatching {
+            p.destroy()
+            if (!p.waitFor(STOP_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                Log.w(TAG, "引擎未在 ${STOP_TIMEOUT_MS}ms 内退出，强制结束")
+                p.destroyForcibly()
+                p.waitFor(2, TimeUnit.SECONDS)
+            }
+        }.onFailure { Log.w(TAG, "停止引擎异常：${it.message}") }
     }
 
     /** 重启（引擎页「重启引擎」）：先停再起 */
@@ -286,8 +314,16 @@ object GopeedEngine {
      */
     private fun killStaleProcess() {
         val pid = pidFile().takeIf { it.isFile }?.readText()?.trim()?.toLongOrNull() ?: return
-        pidFile().delete()
-        if (process?.pid() == pid) return
+        if (process?.pid() == pid) {
+            pidFile().delete()
+            return
+        }
+        killPidIfOurs(pid)
+        runCatching { pidFile().delete() }
+    }
+
+    /** 只杀「确认为本应用内核」的 pid；其它进程（用户自己装的 gopeed）一律不动。 */
+    private fun killPidIfOurs(pid: Long) {
         val handle = ProcessHandle.of(pid).orElse(null) ?: return
         if (!handle.isAlive) return
         val cmd = runCatching { handle.info().command().orElse("") }.getOrDefault("")

@@ -51,7 +51,10 @@ object DbEncryptionManager {
      * @return 实际的旧档位（新装/尚无密钥文件时为 null），供 UI 提示
      */
     fun switchTo(target: DbEncryptionLevel): Result<DbEncryptionLevel?> = runCatching {
-        require(target.isSupported) { "「${target.label}」档需要 SQLCipher 原生库，暂未支持" }
+        require(target.isSupported) {
+            if (target == DbEncryptionLevel.STRICTEST) "「${target.label}」档需要 SQLCipher 原生库，暂未支持"
+            else "「${target.label}」档仅在 Windows 上可用；Linux 请选择「普通」或「宽松」"
+        }
         val settings = SettingsRepository()
         val previous = DbEncryptionLevel.fromId(settings.dbEncryptionLevel)
         val file = keyFile()

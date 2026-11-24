@@ -2,6 +2,8 @@
 
 > 概览见 [README](../README.md)
 
+> **Linux 版构建**：见 [Linux 构建与打包](BUILD-LINUX.md)。本文保留上游 Windows 桌面版的构建说明。
+
 ## 环境要求
 
 要求：Windows 10/11 x64。

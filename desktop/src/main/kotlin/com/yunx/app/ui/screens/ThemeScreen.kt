@@ -3,6 +3,7 @@ package com.yunx.app.ui.screens
 import com.yunx.app.data.prefs.SettingsRepository
 import com.yunx.app.util.Log
 import com.yunx.app.util.PositionPicker
+import com.yunx.app.util.WindowsTitleBar
 import com.yunx.app.ui.BackHandler
 import com.yunx.app.ui.theme.MotionPolicy
 import androidx.compose.animation.AnimatedVisibility
@@ -544,11 +545,29 @@ fun ThemeScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Button(
-                                onClick = { openPositionPicker(density.density) },
-                                enabled = !picking
-                            ) {
-                                Text("设置位置")
+                            if (WindowsTitleBar.isWindows) {
+                                Button(
+                                    onClick = { openPositionPicker(density.density) },
+                                    enabled = !picking
+                                ) {
+                                    Text("设置位置")
+                                }
+                            } else {
+                                // Linux/macOS 没有 C# 遮罩进程：改为「先把窗口拖到目标位置，再保存当前坐标」
+                                Button(
+                                    onClick = {
+                                        val w = com.yunx.app.ui.components.PreviewFullscreen.window
+                                        if (w != null) {
+                                            val saved = "${w.x},${w.y}"
+                                            SettingsRepository().windowCustomPosition = saved
+                                            SettingsRepository().windowStartupPosition = SettingsRepository.WINDOW_POS_CUSTOM
+                                            startupPosition = SettingsRepository.WINDOW_POS_CUSTOM
+                                            customPosition = saved
+                                        }
+                                    }
+                                ) {
+                                    Text("保存当前窗口位置")
+                                }
                             }
                         }
                     }

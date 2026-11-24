@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.yunx.app.util.TrayManager
 
 /**
  * 关闭主窗口时的选择结果。
@@ -54,9 +55,10 @@ fun CloseConfirmDialog(
     onDismiss: (choice: CloseChoice, remember: Boolean) -> Unit,
 ) {
     var rememberChoice by remember { mutableStateOf(false) }
-    // 默认选中：有下载任务时默认选「最小化到托盘」，否则默认「退出」
-    var selected by remember(hasActiveDownloads) {
-        mutableStateOf(if (hasActiveDownloads) CloseChoice.TRAY else CloseChoice.EXIT)
+    val trayAvailable = TrayManager.isInstalled
+    // 默认选中：有下载任务且当前桌面有托盘时选「最小化到托盘」，否则默认「退出」
+    var selected by remember(hasActiveDownloads, trayAvailable) {
+        mutableStateOf(if (hasActiveDownloads && trayAvailable) CloseChoice.TRAY else CloseChoice.EXIT)
     }
 
     FadeAlertDialog(
@@ -75,10 +77,14 @@ fun CloseConfirmDialog(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val options = if (hasActiveDownloads) {
-                    listOf(CloseChoice.TRAY to "最小化到系统托盘（继续下载）", CloseChoice.EXIT to "仍然退出（停止下载）")
-                } else {
-                    listOf(CloseChoice.EXIT to "退出应用", CloseChoice.TRAY to "最小化到系统托盘")
+                val options = buildList {
+                    if (hasActiveDownloads) {
+                        if (trayAvailable) add(CloseChoice.TRAY to "最小化到系统托盘（继续下载）")
+                        add(CloseChoice.EXIT to "仍然退出（停止下载）")
+                    } else {
+                        add(CloseChoice.EXIT to "退出应用")
+                        if (trayAvailable) add(CloseChoice.TRAY to "最小化到系统托盘")
+                    }
                 }
 
                 options.forEach { (choice, label) ->

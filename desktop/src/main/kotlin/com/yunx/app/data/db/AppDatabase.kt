@@ -5,6 +5,7 @@ import com.yunx.app.data.security.CredentialCipher
 import com.yunx.app.data.security.FileCredentialCipher
 import com.yunx.app.util.DiagnosticLog
 import com.yunx.app.util.Log
+import com.yunx.app.util.UnixPermissions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -188,6 +189,8 @@ class AppDatabase private constructor(private val conn: Connection) {
                         }
                     }
                     Log.i(TAG, "database opened: ${dbFile.absolutePath}")
+                    // linux-port：库 + WAL/SHM 收紧到 600（默认 umask 会让它们 644）
+                    UnixPermissions.restrictDatabase(dbFile)
                     // 诊断模式：库开好时记一条（业务表清单 + 每张表行数）
                     logSchema(conn)
                     return AppDatabase(conn)

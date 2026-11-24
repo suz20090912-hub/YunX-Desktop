@@ -25,7 +25,6 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Link
@@ -111,10 +110,12 @@ fun AboutScreen(
                 description = "云析（YunX）是一款网盘分享链接 + 视频链接解析与高速下载工具。" +
                     "粘贴分享链接或视频短链，登录账号后即可浏览内容、在线预览并直接高速下载；" +
                     "也支持磁力 / BT 种子 / ed2k 等 P2P 链接下载。\n" +
-                    "Windows 桌面端：YunX-Desktop 基于 Compose Multiplatform 构建，" +
-                    "在安卓版能力之上补齐桌面交互（右键菜单、文件夹整夹下载、可拖动窗口）。"
+                    "Linux 桌面端：本版本完全移植自 YunX-Desktop 桌面版（Windows），仅在技术层面实现 Linux 兼容运行；" +
+                    "界面和功能与桌面版一致，不额外增加 Linux 专属功能。"
             )
             
+            // ---------- Linux 版说明（移植范围、平台差异、常用路径） ----------
+            LinuxPortCard()
 
             // ---------- 支持平台 ----------
             PlatformCard()
@@ -185,7 +186,7 @@ private fun AppHeader(versionName: String) {
         Spacer(modifier = Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "YunX-Desktop · v$versionName",
+                text = "YunX-Desktop · Linux 版 · v$versionName",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -207,6 +208,12 @@ private fun AppHeader(versionName: String) {
             }
         }
         Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Linux 桌面端 · 完全移植自 Windows 桌面版",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = "网盘与视频链接解析 · 高速下载",
             style = MaterialTheme.typography.bodySmall,
@@ -231,6 +238,39 @@ private fun InfoCard(icon: ImageVector, title: String, description: String) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 22.sp
+                )
+            }
+        }
+    }
+}
+
+/** Linux 版说明：明确「同源移植、只做兼容适配」，并列出最容易踩坑的平台差异 */
+@Composable
+private fun LinuxPortCard() {
+    SectionCard {
+        Row(verticalAlignment = Alignment.Top) {
+            CardIcon(Icons.Outlined.Storage)
+            Spacer(modifier = Modifier.width(14.dp))
+            Column {
+                Text(
+                    text = "Linux 版说明",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "本 Linux 版完全移植自 YunX-Desktop 桌面版（Windows），仅在技术层面实现 Linux 兼容运行；" +
+                        "界面、功能与桌面版一致，不额外增加 Linux 专属功能。\n\n" +
+                        "• 预览：默认窗口内播放，进度 / 音量 / 亮度可调；编码不支持时会提示并切到 FFplay 兼容模式" +
+                        "（独立窗口，控制条仍在应用底部）。\n" +
+                        "• 系统：数据库只提供「宽松 / 普通」；没有系统托盘时，关闭回退为「退出 / 每次询问」；" +
+                        "通知走 notify-send；系统代理读取 GNOME 或 http_proxy / https_proxy。\n" +
+                        "• 引擎：合轨优先用系统 ffmpeg，缺失时回退内置 Java；Gopeed 内核按平台自动选择。\n" +
+                        "• 数据：下载目录、数据库目录可在「设置 → 储存目录」修改；搬迁时 yunx.db 与 credential.key 必须一起移动。\n" +
+                        "• 反馈：先在「设置 → 导出日志」导出日志，附版本号和复现步骤。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 22.sp
@@ -344,10 +384,10 @@ private fun FeatureCard() {
         "视频链接解析" to "哔哩哔哩 / 小红书 / 抖音 / 微博 / 快手 / AcFun / Pixiv；短链、口令、整段文案均可",
         "高速分片下载" to "多线程并发 + 断点续传 + 慢连接自动换线；B 站高清分轨两轨并行后自动合轨",
         "P2P 下载" to "磁力 / BT 种子 / ed2k 电驴链接交给 Gopeed 引擎下载；支持本地种子文件、Tracker 服务器管理与 DHT 开关",
-        "在线预览" to "ffplay 直读直链、真·边下边播（HLS 原生支持）；没装 FFmpeg 时回退内置播放器并可一键下载",
+        "在线预览" to "Linux 默认窗口内播放，进度 / 音量 / 亮度可调；编码不支持时切 FFplay 兼容模式（独立窗口，会提示）；HLS 原生支持",
         "Live 图" to "微博 / 抖音动图可存为动态照片、静态图片或视频",
         "多账号与备份" to "网盘与视频平台均支持多账号（主账号 / 备注），认证信息可加密导出 / 导入",
-        "引擎管理" to "FFmpeg（预览 / 合轨）与 Gopeed 内核集中下载·更新·卸载，装到应用私有目录，不改系统环境变量",
+        "引擎管理" to "Linux 合轨优先用系统 ffmpeg，缺失时回退内置 Java 合轨；Gopeed 内核按平台自动选择，不修改系统环境变量",
         "凭证本地化" to "Cookie / Token 加密落库，仅存本机"
     )
     SectionCard {
@@ -593,12 +633,12 @@ private fun GitHubCard() {
     }
 }
 
-/** PC 版仓库入口卡片 */
+/** Linux 版源码仓库入口卡片（上游为 Windows 桌面版） */
 @Composable
 private fun DesktopRepoCard() {
     Card(
         onClick = {
-            DesktopActions.openUrl("https://github.com/tidain/YunX-Desktop")
+            DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Desktop")
         },
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -619,7 +659,7 @@ private fun DesktopRepoCard() {
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Outlined.DesktopWindows,
+                        imageVector = Icons.Outlined.Link,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onTertiaryContainer
@@ -629,12 +669,12 @@ private fun DesktopRepoCard() {
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "PC 版仓库",
+                    text = "Linux 版源码仓库",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "github.com/tidain/YunX-Desktop",
+                    text = "github.com/suz20090912-hub/YunX-Desktop\n上游：github.com/tidain/YunX-Desktop",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -34,6 +34,7 @@ import com.yunx.app.data.update.UpdateChecker
 import com.yunx.app.ui.components.FadeAlertDialog
 import com.yunx.app.ui.components.GitHubMarkdownImageTransformer
 import com.yunx.app.ui.theme.compactMarkdownTypography
+import com.yunx.app.util.WindowsTitleBar
 
 /**
  * 发现新版本弹窗：标题 + 当前/最新版本 + 更新说明（Markdown 渲染、可滚动限高）+ 下载更新 / 稍后 / 不再提示该版本。
@@ -59,8 +60,20 @@ fun UpdateDialog(
      */
     mandatory: Boolean = false
 ) {
-    val exeAsset = release.assets.firstOrNull { it.name.endsWith(".exe", true) }
-    val zipAsset = release.assets.firstOrNull { it.name.endsWith(".zip", true) }
+    // linux-port：只提供**当前平台**可用的资产。以前无脑取第一个 .exe/.zip，
+    // 在 Linux 上会引导用户下载 win64 便携包（下载完根本跑不起来）；
+    // 强制更新时更会把 Linux 用户锁死在「必须更新」却没有可用包的死循环里。
+    val isWindows = WindowsTitleBar.isWindows
+    val exeAsset = if (isWindows) release.assets.firstOrNull { it.name.endsWith(".exe", true) } else null
+    val zipAsset = if (isWindows) release.assets.firstOrNull { it.name.endsWith(".zip", true) } else null
+    val linuxAsset = if (isWindows) null else release.assets.firstOrNull {
+        val n = it.name.lowercase()
+        n.endsWith(".deb") || n.endsWith(".appimage") || n.endsWith(".rpm") ||
+            n.endsWith(".tar.gz") || n.endsWith(".tar.xz") || n.endsWith(".dmg")
+    }
+    val hasCompatibleAsset = exeAsset != null || zipAsset != null || linuxAsset != null
+    // 没有本平台安装包时，不把「强制更新」当成硬门槛（否则用户只能干瞪眼）
+    val effectiveMandatory = mandatory && hasCompatibleAsset
     // 说明里的图片复用 README 的自研加载器（无 Coil，走 GitHubMirror 统一镜像加速）
     GitHubMarkdownImageTransformer.mirrorPrefix = GitHubMirror.activePrefix()
     // 紧凑字号：与 README 共用同一份排版（见 ui/theme/Type.kt）
@@ -69,7 +82,7 @@ fun UpdateDialog(
     FadeAlertDialog(
         visible = true,
         // 强制更新时点遮罩 / 返回都不能关（必须下载更新后才能继续使用）
-        onDismissRequest = { if (!mandatory) onLater() },
+        onDismissRequest = { if (!effectiveMandatory) onLater() },
         icon = {
             Surface(
                 modifier = Modifier.size(48.dp),
@@ -131,7 +144,7 @@ fun UpdateDialog(
         },
         text = {
             Column {
-                if (mandatory) {
+                if (effectiveMandatory) {
                     Surface(
                         shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.errorContainer
@@ -226,9 +239,42 @@ fun UpdateDialog(
                         }
                     }
                 }
-                if (exeAsset == null && zipAsset == null) {
+                if (linuxAsset != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Button(
+                        onClick = { onDownloadAsset(linuxAsset.downloadUrl, linuxAsset.name) },
+                        enabled = !downloading
+                    ) {
+                        if (downloading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("下载中…")
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.Download,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("下载 Linux 安装包")
+                        }
+                    }
+                    if (onDownloadMirrorAsset != null) {
+                        TextButton(onClick = { onDownloadMirrorAsset(linuxAsset.downloadUrl, linuxAsset.name) }) {
+                            Text("镜像站下载 Linux 包", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+                if (!hasCompatibleAsset) {
                     Text(
-                        text = "该版本未提供安装包",
+                        text = if (isWindows) {
+                            "该版本未提供安装包"
+                        } else {
+                            "该版本未提供当前平台的安装包；可到 Release 页查看源码构建说明"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -236,7 +282,7 @@ fun UpdateDialog(
             }
         },
         confirmButton = {
-            if (mandatory) {
+            if (effectiveMandatory) {
                 // 强制更新：没有「稍后」，只提示必须下载
                 Text(
                     text = "必须更新后才能继续使用",
@@ -249,7 +295,7 @@ fun UpdateDialog(
                 }
             }
         },
-        dismissButton = if (mandatory) {
+        dismissButton = if (effectiveMandatory) {
             null
         } else {
             {

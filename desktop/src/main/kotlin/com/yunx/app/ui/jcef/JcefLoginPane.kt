@@ -192,7 +192,11 @@ fun JcefLoginPane(
                             val cookie = detectedCookie ?: return@Button
                             scope.launch {
                                 isSaving = true
-                                val ok = onSave(cookie)
+                                // 保存失败（Cookie 无效 / 本地密钥不可用等异常）时不能让界面永远停在「保存中」
+                                val saveResult = runCatching { onSave(cookie) }.onFailure {
+                                    Log.e(TAG, "save login failed", it)
+                                }
+                                val ok = saveResult.getOrDefault(false)
                                 isSaving = false
                                 if (ok) {
                                     SnackbarController.show("登录成功")
@@ -371,8 +375,13 @@ fun AutoImportCookieButton(
             results = found
             scanning = false
             if (found.isEmpty()) {
+                val browserHint = if (System.getProperty("os.name", "").lowercase().contains("linux")) {
+                    "Chrome/Chromium 127+ 的 v20 加密 Cookie 无法读取，可尝试 Firefox，或直接在下方内嵌浏览器登录。"
+                } else {
+                    "Chrome/Edge 较新版本因安全限制可能无法读取，可尝试 Firefox 或 360 浏览器。"
+                }
                 errorMsg = "未在本机浏览器中找到该平台的登录 Cookie。\n" +
-                    "提示：需先在浏览器中登录过对应网盘；Chrome/Edge 较新版本因安全限制可能无法读取，可尝试 Firefox 或 360 浏览器。"
+                    "提示：需先在浏览器中登录过对应网盘；$browserHint"
             }
         }
     }

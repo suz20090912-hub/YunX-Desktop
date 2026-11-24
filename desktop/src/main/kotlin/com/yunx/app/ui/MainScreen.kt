@@ -375,7 +375,15 @@ fun MainScreen(
         }
         when (behavior) {
             SettingsRepository.CLOSE_BEHAVIOR_TRAY -> {
-                minimizeToTray()
+                // GNOME 等无托盘环境下 isInstalled=false：隐藏后无法恢复，改为「有任务先确认、无任务直接退出」
+                if (TrayManager.isInstalled) {
+                    minimizeToTray()
+                } else if (hasActiveDownloads) {
+                    closeDialogHasDownloads = true
+                    showCloseDialog = true
+                } else {
+                    onExitApplication()
+                }
             }
             SettingsRepository.CLOSE_BEHAVIOR_EXIT -> {
                 if (hasActiveDownloads) {

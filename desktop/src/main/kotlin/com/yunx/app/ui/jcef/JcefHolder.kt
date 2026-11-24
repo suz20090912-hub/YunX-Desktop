@@ -63,6 +63,7 @@ object JcefHolder {
                         Thread.sleep(600L * (attempt - 1))
                     }
                     killStaleJcefHelpers()
+                    cleanStaleSingletonLocks()
                     recoverFromAbnormalExit()
                     val builder = CefAppBuilder()
                     val installDir = File(AppContext.cacheDir, "jcef-bundle")
@@ -143,8 +144,43 @@ object JcefHolder {
         }
     }
 
-    /** 进程退出前释放（尽力而为；进程即将结束，失败无碍） */
-    fun disposeQuietly() {
+    /**
+     * 清理指向「已死进程 / 旧主机名」的 CEF 单例锁。
+     *
+     * Chromium 用 profile 下的 `SingletonLock` 软链（`<hostname>-<pid>`）判断 profile 是否被占用。
+     * Linux 上容器/虚拟机换 hostname、或上次进程被强杀时，锁链会留在磁盘上；此后 Chromium 启动直接
+     * `ContentMainRun failed with exit code 21`（日志报 "profile appears to be in use by another
+     * Chromium process ... on another computer"），网页永远空白。
+     *
+     * 这里只在「锁里的 pid 已不存在，或该 pid 已不是 CEF 进程」时删除锁；清理范围仅限本应用的
+     * `cache/jcef`，不会误伤系统里其它 Chromium。
+     */
+    private fun cleanStaleSingletonLocks() {
+        val profile = File(AppContext.cacheDir, "jcef")
+        if (!profile.isDirectory) return
+        val lock = File(profile, "SingletonLock")
+        // 注意：失效的单例锁是「指向不存在目标的软链」，File.exists() 会跟随软链返回 false，
+        // 必须用 isSymbolicLink 判断，否则永远清不掉。
+        if (!java.nio.file.Files.isSymbolicLink(lock.toPath()) && !lock.exists()) return
+        val target = runCatching { java.nio.file.Files.readSymbolicLink(lock.toPath()).toString() }.getOrNull()
+        val pid = target?.substringAfterLast('-')?.toLongOrNull()
+        if (pid != null) {
+            val handle = ProcessHandle.of(pid).orElse(null)
+            if (handle != null && handle.isAlive) {
+                val cmd = runCatching { handle.info().command().orElse("") }.getOrDefault("")
+                if (cmd.contains("jcef", ignoreCase = true) || cmd.contains("cef", ignoreCase = true)) {
+                    Log.i(TAG, "CEF profile 仍被存活进程 $pid 占用，保留单例锁")
+                    return
+                }
+            }
+        }
+        Log.w(TAG, "清理失效的 CEF 单例锁：${target ?: "(非软链)"}")
+        for (name in listOf("SingletonLock", "SingletonCookie", "SingletonSocket")) {
+            runCatching { File(profile, name).delete() }
+        }
+    }
+
+    /** 进程退出前释放（尽力而为；进程即将结束，失败无碍） */    fun disposeQuietly() {
         runCatching { cefApp?.dispose() }.onFailure {
             Log.w(TAG, "CefApp dispose failed: ${it.message}")
         }

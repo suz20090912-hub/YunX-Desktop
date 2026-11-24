@@ -58,6 +58,9 @@ import kotlin.coroutines.resume
 object HeadlessWebView {
 
     private const val TAG = "YunX-Headless"
+
+    /** linux-port：X11 下承载隐藏 CEF 浏览器的屏幕外容器（Windows 不用） */
+    private var hiddenHost: javax.swing.JFrame? = null
     private const val PREFIX_PROBE = "tokenok:"
     private const val PREFIX_READY = "ready:"
     private const val PREFIX_RESULT = "result:"
@@ -205,6 +208,12 @@ object HeadlessWebView {
             client = null
             runCatching { c?.dispose() }
         }
+        // linux-port：承载隐藏浏览器的 JFrame 必须一并销毁，否则退出时 AWT 还挂着一个不可见窗口
+        runCatching {
+            val host = hiddenHost
+            hiddenHost = null
+            host?.dispose()
+        }
         synchronized(lock) { active = null }
     }
 
@@ -328,6 +337,31 @@ object HeadlessWebView {
                 // 画布永不挂到窗口 → 等不到 addNotify 的自动创建，
                 // 必须手动触发原生浏览器创建（隐藏加载的关键，同时发起首次导航）
                 b.createImmediately()
+                // linux-port：Windows 上「不挂父窗口」的 CEF browser 不会自己开顶层窗；
+                // X11 下 CEF 会直接建一个 1920x1080 的顶层 Chromium Window（实测挡满屏幕）。
+                // 这里给它塞进一个屏幕外的 1px 容器，链条不变（仍是窗口态 + createImmediately），
+                // 只是原生子窗口被父窗口的映射状态带走，用户看不到。
+                if (!com.yunx.app.util.WindowsTitleBar.isWindows) {
+                    val host = javax.swing.JFrame("yunx-headless").apply {
+                        isUndecorated = true
+                        defaultCloseOperation = javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE
+                        setSize(16, 16)
+                        setLocation(0, 0)
+                        add(b.uiComponent)
+                    }
+                    // 全透明 + 1px 级尺寸：打开窗口管理器（openbox/GNOME）会重新摆放窗口，
+                    // 靠负坐标躲不掉，透明度才是稳的。
+                    // ★ 无合成器的 X11（Xvfb / 部分远程桌面 / 轻量 WM）不支持 PERPIXEL_TRANSLUCENT，
+                    //   setOpacity 会抛 UnsupportedOperationException —— 这里必须兜底，否则整个隐藏浏览器
+                    //   创建失败，而抖音解析主链就走这条 headless 路径（表现为「解析失败」）。
+                    val translucent = runCatching { host.opacity = 0.0f }.isSuccess
+                    if (!translucent) {
+                        Log.w(TAG, "当前窗口管理器不支持透明，隐藏浏览器退到屏幕外")
+                        host.setLocation(-32000, -32000)
+                    }
+                    host.isVisible = true
+                    hiddenHost = host
+                }
                 client = c
                 router = r
                 browser = b

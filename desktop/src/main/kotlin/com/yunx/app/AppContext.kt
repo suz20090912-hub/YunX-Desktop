@@ -2,6 +2,7 @@ package com.yunx.app
 
 import com.yunx.app.data.storage.StorageMigrator
 import com.yunx.app.util.Log
+import com.yunx.app.util.UnixPermissions
 import java.io.File
 import java.util.prefs.Preferences
 
@@ -75,6 +76,10 @@ object AppContext {
     fun init() {
         migrateLegacyDataDir()
         listOf(dataDir, dbDir, cacheDir, downloadTmpDir, mergeDir, filesDir).forEach { it.mkdirs() }
+        // linux-port：数据目录 700、库/密钥文件 600（Windows 上 Posix 视图为 null，自动跳过）
+        listOf(dataDir, dbDir, cacheDir, filesDir).forEach { UnixPermissions.restrictDir(it) }
+        UnixPermissions.restrictDatabase(File(dbDir, "yunx.db"))
+        UnixPermissions.restrictFile(File(dbDir, "credential.key"))
         cleanupMigratedStorage()
     }
 
@@ -204,7 +209,12 @@ object AppContext {
      */
     private fun resolveAppRoot(): File {
         System.getProperty("jpackage.app-path")?.let { p ->
-            File(p).parentFile?.takeIf { it.isDirectory }?.let { return it }
+            val parent = File(p).parentFile
+            if (parent != null && parent.isDirectory) {
+                // Linux/macOS 的 jpackage 布局是 <root>/bin/<launcher>，应用根在上一级；
+                // Windows 的 exe 就在根目录，父目录即根。
+                return if (parent.name == "bin" && parent.parentFile != null) parent.parentFile!! else parent
+            }
         }
         return File(System.getProperty("user.dir") ?: ".")
     }

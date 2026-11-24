@@ -33,7 +33,21 @@ import kotlin.coroutines.coroutineContext
 object GopeedKernelProvisioner {
 
     private const val TAG = "GopeedKernel"
-    private const val RELEASES_LATEST_URL = "https://api.github.com/repos/GopeedLab/gopeed/releases/latest"
+
+    /**
+     * 固定内核版本（不再跟 `releases/latest` 漂移）。
+     *
+     * 原因：Gopeed 的 `/api/v1` 路由与任务字段历史上变过（例如 Android 版曾按
+     * `/tasks/{id}/status` 写，而服务端根本没有这个路由，进度同步永远 404）。跟着 latest 走
+     * 意味着每次发版都可能把下载引擎换成未经本应用验证的版本。
+     *
+     * 升级流程：改这个常量 → 在设置页重新导入对应平台的 web 包 → 跑一遍
+     * 「新建/暂停/继续/删除/完成」五条链路 → 再发版。
+     */
+    private const val PINNED_KERNEL_TAG = "v1.9.3"
+
+    private const val RELEASES_TAG_URL =
+        "https://api.github.com/repos/GopeedLab/gopeed/releases/tags/$PINNED_KERNEL_TAG"
 
     /** 官方包名前缀/后缀：`gopeed-web-v1.9.3-windows-amd64.zip` */
     private const val ASSET_PREFIX = "gopeed-web-"
@@ -80,6 +94,10 @@ object GopeedKernelProvisioner {
         val digest: String
     )
 
+    /** 官方包名里的操作系统段：Windows=windows，Linux=linux（网络内其余平台按 linux 处理） */
+    private fun osToken(): String =
+        if (System.getProperty("os.name", "").lowercase().contains("win")) "windows" else "linux"
+
     /** 本机对应的官方包架构后缀：x86_64 → amd64，aarch64 → arm64 */
     private fun archSuffix(): String {
         val arch = System.getProperty("os.arch").orEmpty().lowercase()
@@ -90,20 +108,19 @@ object GopeedKernelProvisioner {
     }
 
     /**
-     * 查询官方最新 Release，拼出本机可用的内核计划。
+     * 查询固定版本的 Release，拼出本机可用的内核计划。
      * @param mirrorPrefix 调用方指定的镜像前缀；null/空走 GitHubMirror 自动选最快（或用户固定）
      */
     suspend fun resolvePlan(mirrorPrefix: String?): Plan = withContext(Dispatchers.IO) {
         val mirror = mirrorPrefix?.takeIf { it.isNotBlank() } ?: GitHubMirror.activePrefix()
-        val json = fetchLatestJson()
-        val tag = json.optString("tag_name")
-        if (tag.isBlank()) throw IllegalStateException("官方 Release 缺少版本号")
-        val wanted = "$ASSET_PREFIX$tag-windows-${archSuffix()}$ASSET_ARCH_SUFFIX"
+        val json = fetchReleaseJson()
+        val tag = json.optString("tag_name").ifBlank { PINNED_KERNEL_TAG }
+        val wanted = "$ASSET_PREFIX$tag-${osToken()}-${archSuffix()}$ASSET_ARCH_SUFFIX"
         val asset = json.optJSONArray("assets")?.let { arr ->
             (0 until arr.length())
                 .mapNotNull { arr.optJSONObject(it) }
                 .firstOrNull { it.optString("name").equals(wanted, ignoreCase = true) }
-        } ?: throw IllegalStateException("官方 Release（$tag）里没有 Windows 内核包 $wanted")
+        } ?: throw IllegalStateException("Release（$tag）里没有当前平台的内核包 $wanted")
         val direct = asset.optString("browser_download_url")
         if (direct.isBlank()) throw IllegalStateException("内核包缺少下载地址")
         Plan(
@@ -116,9 +133,9 @@ object GopeedKernelProvisioner {
         )
     }
 
-    private fun fetchLatestJson(): JSONObject {
+    private fun fetchReleaseJson(): JSONObject {
         val req = Request.Builder()
-            .url(RELEASES_LATEST_URL)
+            .url(RELEASES_TAG_URL)
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "YunX-Desktop")
             .build()

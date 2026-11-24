@@ -296,9 +296,16 @@ private fun WelcomePage() {
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "YunX-Desktop · v$APP_VERSION",
+            text = "YunX-Desktop · Linux 版 · v$APP_VERSION",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "完全移植自 Windows 桌面版，仅在技术层面实现 Linux 兼容运行，不新增额外功能",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(14.dp))
         Text(
@@ -348,12 +355,12 @@ private fun FactChip(text: String) {
     }
 }
 
-/** 开源仓库入口卡片 */
+/** Linux 版开源仓库入口卡片 */
 @Composable
 private fun GitHubCard() {
     Card(
         onClick = {
-            DesktopActions.openUrl("https://github.com/tidain/YunX-Desktop")
+            DesktopActions.openUrl("https://github.com/suz20090912-hub/YunX-Desktop")
         },
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -382,13 +389,13 @@ private fun GitHubCard() {
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "开源仓库",
+                    text = "Linux 版开源仓库",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "github.com/tidain/YunX-Desktop",
+                    text = "github.com/suz20090912-hub/YunX-Desktop",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -465,6 +472,12 @@ private fun FeaturesPage() {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Linux 版完全移植自 Windows 桌面版，仅在技术层面实现 Linux 兼容运行；功能一致，不额外增加功能。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary
+        )
         Spacer(modifier = Modifier.height(12.dp))
 
         FeatureRow(
@@ -490,7 +503,7 @@ private fun FeaturesPage() {
         FeatureRow(
             icon = Icons.Outlined.Storage,
             title = "在线预览与 Live 图",
-            description = "视频直读直链、边下边播（HLS 原生支持，可全屏 / 拖动）；首次预览缺引擎时会询问是否下载 FFmpeg，装完自动起播；微博、抖音动图可存为动态照片、静图或视频"
+            description = "默认窗口内播放，进度 / 音量 / 亮度可调；编码不支持时会提示并切 FFplay 兼容模式（独立窗口）；HLS 原生支持；微博、抖音动图可存为动态照片、静图或视频"
         )
         FeatureRow(
             icon = Icons.Outlined.Lock,
@@ -638,9 +651,20 @@ private fun TermsPage() {
 
         TermsCard(
             icon = Icons.Outlined.Code,
+            title = "Linux 版说明",
+            paragraphs = listOf(
+                "本 Linux 版完全移植自 YunX-Desktop 桌面版（Windows），仅在技术层面实现 Linux 兼容运行；界面、功能一致，不额外增加功能。",
+                "系统差异：数据库只有「宽松 / 普通」；无托盘时关闭回退为退出 / 每次询问；通知走 notify-send；代理读 GNOME 或环境变量；合轨优先系统 ffmpeg。",
+                "预览默认窗口内播放；编码不支持时会提示并切到 FFplay 兼容模式（独立窗口，控制条仍在应用底部）。"
+            )
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        TermsCard(
+            icon = Icons.Outlined.Code,
             title = "开源协议",
             paragraphs = listOf(
-                "本项目基于 GNU AGPL-3.0 协议开源，源码公开于 github.com/tidain/YunX-Desktop。"
+                "本项目基于 GNU AGPL-3.0 协议开源，Linux 版源码公开于 github.com/suz20090912-hub/YunX-Desktop；上游 Windows 桌面版为 github.com/tidain/YunX-Desktop。"
             )
         )
 

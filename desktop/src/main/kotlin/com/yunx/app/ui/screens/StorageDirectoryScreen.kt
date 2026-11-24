@@ -478,20 +478,24 @@ fun StorageSettingsPanel(
                         title = "数据库加密等级",
                         subtitle = "控制凭证主密钥（credential.key）怎么保护；改档只重新包裹密钥，不动库内数据、立即生效"
                     ) {
-                        DbEncryptionLevel.entries.forEach { level ->
-                            val supported = level.isSupported
-                            PresetRow(
-                                title = if (level == DbEncryptionLevel.NORMAL) "${level.label}（默认）" else level.label,
-                                subtitle = levelDescription(level, supported),
-                                selected = encLevel == level,
-                                enabled = supported && !busy,
-                                onClick = { if (supported && level != encLevel) pendingLevel = level }
-                            )
-                        }
+                        DbEncryptionLevel.entries
+                            // Linux 上「较为严格」依赖 Windows DPAPI，直接不展示，避免给用户一个点了就报错的档位；
+                            // 若当前配置恰好是该档（例如从 Windows 迁移过来），仍保留一行只读提示。
+                            .filter { it == encLevel || it.isSupported }
+                            .forEach { level ->
+                                val supported = level.isSupported
+                                PresetRow(
+                                    title = if (level == DbEncryptionLevel.NORMAL) "${level.label}（默认）" else level.label,
+                                    subtitle = levelDescription(level, supported),
+                                    selected = encLevel == level,
+                                    enabled = supported && !busy,
+                                    onClick = { if (supported && level != encLevel) pendingLevel = level }
+                                )
+                            }
                         Spacer(Modifier.height(6.dp))
                         HintRow(
-                            "三档都只保护密钥：库内**账号凭证**始终是 AES-256-GCM 密文，" +
-                                "但任务文件名 / URL / 保存路径等元数据在三档下都是明文（整库加密需要 SQLCipher，暂未支持）。"
+                            "以上各档都只保护密钥：库内**账号凭证**始终是 AES-256-GCM 密文，" +
+                                "但任务文件名 / URL / 保存路径等元数据在各档下都是明文（整库加密需要 SQLCipher，暂未支持）。"
                         )
                     }
                 }
@@ -939,7 +943,8 @@ private fun levelDescription(level: DbEncryptionLevel, supported: Boolean): Stri
     DbEncryptionLevel.NORMAL ->
         "库明文 · 凭证列加密 · 密钥用本机派生密钥包裹（绑定本机，换机器解不开）"
     DbEncryptionLevel.STRICT ->
-        "库明文 · 凭证列加密 · 密钥用 Windows DPAPI 保护（绑定当前 Windows 用户）"
+        if (supported) "库明文 · 凭证列加密 · 密钥用 Windows DPAPI 保护（绑定当前 Windows 用户）"
+        else "当前系统不支持此档；Linux 请选择「普通」或「宽松」"
     DbEncryptionLevel.STRICTEST ->
         if (supported) "库整体加密 + DPAPI 保护密钥" else "库整体加密（SQLCipher）—— 暂未支持"
 }

@@ -21,6 +21,7 @@ import com.yunx.app.ui.jcef.JcefHolder
 import com.yunx.app.ui.theme.ComposeEmptyActivityTheme
 import com.yunx.app.util.DarkMode
 import com.yunx.app.util.DesktopActions
+import com.yunx.app.util.WindowsTitleBar
 import com.yunx.app.util.RenderApiChooser
 import com.yunx.app.util.SingleInstance
 import com.yunx.app.util.TrayManager
@@ -45,14 +46,24 @@ fun main(args: Array<String>) {
     //   否则 GUI 进程一旦抛异常就是「静默消失」——启动器只把堆栈打到 stderr（双击启动时没人看得到），
     //   用户看到的只有「应用启动后自己退出了」，无法排查。
     Thread.setDefaultUncaughtExceptionHandler { thread, error ->
-        runCatching { com.yunx.app.util.Log.e("YunX-Crash", "未捕获异常（线程 ${thread.name}）", error) }
-        runCatching {
-            com.yunx.app.util.DiagnosticLog.error(
-                com.yunx.app.util.DiagnosticLog.OPERATION,
-                "uncaught_exception",
-                summary = "thread=${thread.name} ${error.javaClass.name}: ${error.message}"
-            )
-            com.yunx.app.util.DiagnosticLog.flush(1000)
+        val trayUnavailable = error is UnsupportedOperationException &&
+            error.message?.contains("system tray", ignoreCase = true) == true
+        if (trayUnavailable) {
+            // Linux 的 AWT XTrayIconPeer 在 EDT 异步创建；桌面没有 XEmbed tray owner 时
+            // 这里会抛「system tray is not supported」。这不是应用级崩溃，清掉托盘状态、
+            // 让通知走 notify-send 即可，不要让用户看到崩溃日志。
+            runCatching { TrayManager.onTrayUnavailable() }
+            runCatching { com.yunx.app.util.Log.w("YunX-Crash", "系统托盘不可用，已回退桌面通知：${error.message}") }
+        } else {
+            runCatching { com.yunx.app.util.Log.e("YunX-Crash", "未捕获异常（线程 ${thread.name}）", error) }
+            runCatching {
+                com.yunx.app.util.DiagnosticLog.error(
+                    com.yunx.app.util.DiagnosticLog.OPERATION,
+                    "uncaught_exception",
+                    summary = "thread=${thread.name} ${error.javaClass.name}: ${error.message}"
+                )
+                com.yunx.app.util.DiagnosticLog.flush(1000)
+            }
         }
     }
 
@@ -70,9 +81,11 @@ fun main(args: Array<String>) {
     //   但一个文字都不渲染」，这类设备由 [RenderApiChooser] 自动退到 SOFTWARE。
     //   必须在创建任何窗口 / Skiko 初始化之前设置；环境变量 YUNXPC_RENDER_API 优先级更高。
     var softwareRendering = false
-    if (osName.contains("win")) {
+    run {
+        // linux-port：Windows 走 RenderApiChooser 的老设备探测；Linux/macOS 默认 SOFTWARE，
+        // 因为 Xvfb / 无 GL 的远程桌面下 OPENGL 会直接起不来窗口，可用 YUNXPC_RENDER_API 覆盖
         val renderApi = System.getenv("YUNXPC_RENDER_API")?.takeIf { it.isNotBlank() }
-            ?: RenderApiChooser.chooseWindows()
+            ?: if (osName.contains("win")) RenderApiChooser.chooseWindows() else "SOFTWARE"
         com.yunx.app.util.Log.i("YunX-Render", "渲染后端：$renderApi")
         System.setProperty("skiko.renderApi", renderApi)
         softwareRendering = renderApi.equals("SOFTWARE", true)
@@ -274,6 +287,26 @@ fun main(args: Array<String>) {
                     (window as? java.awt.Frame)?.let { WindowFx.scheduleFadeIn(it) }
                 }
             }
+            // 下载引擎：已把 Gopeed 设为当前引擎且内核已导入时，随应用启动拉起。
+            // 否则重启后「使用中」却显示「未启动」，用户会误以为必须手动点一次。
+            // 启动失败只记日志，真正下载时仍会按需重试。
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    runCatching {
+                        val prefs = com.yunx.app.data.prefs.SettingsRepository()
+                        if (prefs.downloadEngine == com.yunx.app.data.prefs.SettingsRepository.ENGINE_GOPEED &&
+                            com.yunx.app.data.gopeed.GopeedEngine.isInstalled() &&
+                            com.yunx.app.data.gopeed.GopeedEngine.isSupported
+                        ) {
+                            val dir = com.yunx.app.data.download.DownloadSaver.resolveSaveDir(prefs.downloadDirUri)
+                            com.yunx.app.data.gopeed.GopeedEngine.start(dir)
+                            com.yunx.app.util.Log.i("YunX-Gopeed", "已按设置随应用启动 Gopeed 引擎")
+                        }
+                    }.onFailure {
+                        com.yunx.app.util.Log.w("YunX-Gopeed", "随应用启动引擎失败：${it.message}")
+                    }
+                }
+            }
             // 系统托盘：JNA 调 Win32 TrackPopupMenu（原生菜单，中文正常，暗色跟随系统）
             androidx.compose.runtime.LaunchedEffect(Unit) {
                 TrayManager.loadTrayIcon()?.let { icon ->
@@ -289,6 +322,10 @@ fun main(args: Array<String>) {
                                 ),
                                 x = x, y = y
                             )
+                            // 非 Windows 上 Win32PopupMenu 恒返回 0：直接还原窗口，避免右键无任何反应
+                            if (cmd == 0 && !WindowsTitleBar.isWindows) {
+                                DesktopActions.bringWindowToFront(mainWindow)
+                            }
                             when (cmd) {
                                 1 -> DesktopActions.bringWindowToFront(mainWindow)
                                 2 -> {

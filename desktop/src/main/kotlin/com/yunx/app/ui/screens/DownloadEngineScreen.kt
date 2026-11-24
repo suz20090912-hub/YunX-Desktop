@@ -68,6 +68,7 @@ import com.yunx.app.data.gopeed.GopeedEngine
 import com.yunx.app.data.gopeed.GopeedKernelProvisioner
 import com.yunx.app.data.network.GitHubMirror
 import com.yunx.app.data.prefs.SettingsRepository
+import com.yunx.app.data.download.FfmpegMuxer
 import com.yunx.app.data.preview.FfplayManager
 import com.yunx.app.ui.BackHandler
 import com.yunx.app.ui.SnackbarController
@@ -173,6 +174,10 @@ fun DownloadEngineScreen(
 
     /** 从官方 Release 下载内核（可取消；取消后清掉半截包） */
     fun downloadKernel() {
+        if (!GopeedEngine.isSupported) {
+            SnackbarController.show("当前平台暂无可用的 Gopeed 内核包，请继续使用内置下载器")
+            return
+        }
         if (busy) return
         busy = true
         failure = null
@@ -205,6 +210,10 @@ fun DownloadEngineScreen(
 
     /** 导入本地内核（官方 zip 或裸 gopeed.exe） */
     fun importKernel() {
+        if (!GopeedEngine.isSupported) {
+            SnackbarController.show("当前平台暂无可用的 Gopeed 内核包，请继续使用内置下载器")
+            return
+        }
         scope.launch {
             val path = withContext(Dispatchers.IO) {
                 DesktopActions.pickFile(
@@ -267,6 +276,10 @@ fun DownloadEngineScreen(
 
     /** 下载 / 更新 FFmpeg 精简版到应用私有目录（ffplay 在线预览 + DASH 合轨都用它） */
     fun downloadFfmpeg() {
+        if (!FfmpegMuxer.isEngineSupported()) {
+            SnackbarController.show("Linux 版不提供内置 FFmpeg 精简包，请用系统包安装（Debian/Ubuntu：sudo apt install ffmpeg），或继续使用内置预览与合轨")
+            return
+        }
         if (ffmpegDownloading) return
         ffmpegDownloading = true
         ffmpegRead = 0L
@@ -391,7 +404,7 @@ fun DownloadEngineScreen(
                             kernelVersion?.let { append(" · 核心版本 $it") }
                         }
                     } else {
-                        "未导入（需要官方 windows 版内核）"
+                        "未导入（点上方「从官方下载内核」或导入本地内核包）"
                     }
                 )
                 Spacer(Modifier.height(6.dp))
@@ -432,7 +445,7 @@ fun DownloadEngineScreen(
                                     }
                                     busy = false
                                     r.onSuccess {
-                                        SnackbarController.show("引擎已重启")
+                                        SnackbarController.show(if (engineState == GopeedEngine.State.RUNNING) "引擎已重启" else "引擎已启动")
                                         refreshVersion()
                                     }.onFailure { failure = it.message }
                                 }
@@ -442,7 +455,7 @@ fun DownloadEngineScreen(
                         ) {
                             Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("重启引擎")
+                            Text(if (engineState == GopeedEngine.State.RUNNING) "重启引擎" else "启动引擎")
                         }
                         OutlinedButton(
                             onClick = { showImportMenu = true },
@@ -573,18 +586,34 @@ fun DownloadEngineScreen(
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "影响解析页的在线预览与哔哩哔哩等分轨视频的合轨。FFplay 由 FFmpeg 精简版提供，" +
-                            "不随安装包发布，需要在这里下载；本机已装 FFmpeg（PATH / 常见目录）时会自动命中。",
+                        text = if (!FfplayManager.isWindows()) {
+                            "影响解析页的在线预览与哔哩哔哩等分轨视频的合轨。Linux 默认使用内置 JavaFX 单窗口播放；也可选 FFplay 兼容模式（独立窗口）。合轨使用系统 ffmpeg。"
+                        } else if (FfmpegMuxer.isEngineSupported()) {
+                            "影响解析页的在线预览与哔哩哔哩等分轨视频的合轨。FFplay 由 FFmpeg 精简版提供，" +
+                                "不随安装包发布，需要在这里下载；本机已装 FFmpeg（PATH / 常见目录）时会自动命中。"
+                        } else {
+                            "影响解析页的在线预览与哔哩哔哩等分轨视频的合轨。当前系统直接使用系统 ffmpeg：" +
+                                "安装后（如 sudo apt install ffmpeg）会自动从 PATH 命中，无需下载精简包。"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(12.dp))
 
-                    listOf(
-                        SettingsRepository.PREVIEW_AUTO to "自动（推荐）：有 FFplay 就用，否则回退内置",
-                        SettingsRepository.PREVIEW_FFPLAY to "FFplay：边下边播、拖动无需整段重下",
-                        SettingsRepository.PREVIEW_JAVA_FX to "内置 JavaFX：先缓存再播，兼容性最好但较慢"
-                    ).forEach { (value, label) ->
+                    val previewOptions = if (FfplayManager.isWindows()) {
+                        listOf(
+                            SettingsRepository.PREVIEW_AUTO to "自动（推荐）：有 FFplay 就用，否则回退内置",
+                            SettingsRepository.PREVIEW_FFPLAY to "FFplay：边下边播、拖动无需整段重下",
+                            SettingsRepository.PREVIEW_JAVA_FX to "内置 JavaFX：先缓存再播，兼容性最好但较慢"
+                        )
+                    } else {
+                        listOf(
+                            SettingsRepository.PREVIEW_AUTO to "自动（推荐）：先内置 JavaFX 单窗口播放，失败时用 FFplay 兜底",
+                            SettingsRepository.PREVIEW_FFPLAY to "FFplay：独立播放窗口（Linux 不嵌入；进度 / 音量 / 亮度在应用控制条）",
+                            SettingsRepository.PREVIEW_JAVA_FX to "内置 JavaFX：单窗口播放，支持进度 / 音量 / 亮度"
+                        )
+                    }
+                    previewOptions.forEach { (value, label) ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
@@ -602,8 +631,26 @@ fun DownloadEngineScreen(
                         }
                     }
 
+                    if (!FfplayManager.isWindows() && previewEngine == SettingsRepository.PREVIEW_FFPLAY) {
+                        Text(
+                            "提醒：Linux 上 FFplay 会另开一个播放窗口，无法嵌进应用；播放进度 / 音量 / 亮度仍在应用底部控制条调整。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                        Spacer(Modifier.height(6.dp))
+                    }
+
                     Spacer(Modifier.height(10.dp))
-                    KeyValueRow("FFplay 状态", ffplayPath ?: "未检测到（可下载 FFmpeg 精简版，约 50–90MB）")
+                    KeyValueRow(
+                        "FFplay 状态",
+                        ffplayPath ?: if (!FfplayManager.isWindows()) {
+                            "未检测到（Linux 请安装系统 ffmpeg：sudo apt install ffmpeg）"
+                        } else if (FfmpegMuxer.isEngineSupported()) {
+                            "未检测到（可下载 FFmpeg 精简版，约 50–90MB）"
+                        } else {
+                            "未检测到（请安装系统 ffmpeg：sudo apt install ffmpeg）"
+                        }
+                    )
 
                     Spacer(Modifier.height(14.dp))
                     if (ffmpegDownloading) {
@@ -634,7 +681,7 @@ fun DownloadEngineScreen(
                             )
                             TextButton(onClick = { ffmpegJob?.cancel() }) { Text("取消下载") }
                         }
-                    } else {
+                    } else if (FfmpegMuxer.isEngineSupported()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
@@ -659,6 +706,17 @@ fun DownloadEngineScreen(
                                 }
                             }
                         }
+                    } else {
+                        // Linux/macOS：官方精简包只提供 Windows 构建，这里不再放一个点了必然失败的下载按钮
+                        Text(
+                            text = if (ffplayPath == null) {
+                                "请用系统包安装 FFmpeg（Debian/Ubuntu：sudo apt install ffmpeg）"
+                            } else {
+                                "当前使用系统 ffmpeg；需要更新请用系统包管理器（Debian/Ubuntu：sudo apt install --only-upgrade ffmpeg）"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -776,7 +834,7 @@ fun DownloadEngineScreen(
                     ) {
                         Icon(Icons.Outlined.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("从官方下载最新内核")
+                        Text("从官方下载已验证内核")
                     }
                     TextButton(
                         onClick = {

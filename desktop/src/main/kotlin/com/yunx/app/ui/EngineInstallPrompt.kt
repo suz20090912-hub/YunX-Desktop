@@ -16,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.yunx.app.data.prefs.SettingsRepository
+import com.yunx.app.data.download.FfmpegMuxer
 import com.yunx.app.data.preview.FfplayManager
 import com.yunx.app.ui.components.FadeAlertDialog
 import com.yunx.app.ui.components.formatBytes
@@ -65,6 +66,8 @@ object EngineInstallPrompt {
      * @return 是否真的弹出了提示
      */
     fun ask(reason: Reason): Boolean {
+        // FFmpeg 引擎包只有 Windows 版（ffplay.exe/ffmpeg.exe），Linux/macOS 上不要弹这个下载提示
+        if (!FfmpegMuxer.isEngineSupported()) return false
         if (FfplayManager.currentPath() != null) return false
         val repo = SettingsRepository()
         if (repo.ffmpegEngineAsked) return false

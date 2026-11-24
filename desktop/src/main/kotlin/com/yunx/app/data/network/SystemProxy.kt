@@ -38,7 +38,7 @@ object SystemProxy {
         /** 检测到 PAC 自动配置脚本，本实现不支持 → 直连 */
         data object PacUnsupported : Inspect
 
-        /** 非 Windows 平台或读取注册表失败 → 直连 */
+        /** Windows 注册表读取失败等异常 → 直连 */
         data object Unavailable : Inspect
     }
 
@@ -51,8 +51,21 @@ object SystemProxy {
      */
     fun inspect(): Inspect {
         if (!isWindows) {
-            Log.i(TAG, "非 Windows 平台，不支持系统代理，按直连处理")
-            return Inspect.Unavailable
+            // linux-port：Linux 没有 Internet 选项注册表，但 http_proxy / https_proxy 是事实标准。
+            // 不读环境变量时，机器上「浏览器走代理、终端与应用直连」会导致 GitHub API /
+            // 内核与更新包全部 403 —— 日志里表现为每次启动一条 403，却看不出是代理问题。
+            envProxy()?.let {
+                Log.i(TAG, "使用环境变量代理 ${it.host}:${it.port}")
+                return it
+            }
+            // 环境变量之外，GNOME「网络代理」面板写入的是 gsettings（手动模式下 http/https host+port）
+            gnomeProxy()?.let {
+                Log.i(TAG, "使用 GNOME 系统代理 ${it.host}:${it.port}")
+                return it
+            }
+            Log.i(TAG, "非 Windows 平台且未设置 http_proxy/https_proxy 或 GNOME 代理，按直连处理")
+            // Linux 没有系统代理并不等于「平台不支持」：这是正常的直连状态，UI 不要误报。
+            return Inspect.Direct
         }
         val enable = readInt("ProxyEnable") ?: 0
         val server = readString("ProxyServer")
@@ -60,6 +73,65 @@ object SystemProxy {
         val override = readString("ProxyOverride")
         return parse(enable, server, pac, override)
     }
+
+    /**
+     * 读取 `https_proxy` / `http_proxy` / `all_proxy`（大小写两种写法）。
+     * 只接受 http/https 代理：本应用的 OkHttp 客户端只装配 `Proxy.Type.HTTP`，
+     * 把 socks 地址塞进去反而会让所有请求失败，所以 socks 明确忽略并记日志。
+     */
+    private fun envProxy(): Inspect.Proxy? {
+        val raw = listOf("https_proxy", "HTTPS_PROXY", "http_proxy", "HTTP_PROXY", "all_proxy", "ALL_PROXY")
+            .asSequence()
+            .mapNotNull { System.getenv(it)?.trim()?.takeIf { v -> v.isNotEmpty() } }
+            .firstOrNull() ?: return null
+        val withScheme = if (raw.contains("://")) raw else "http://$raw"
+        val uri = runCatching { java.net.URI(withScheme) }.getOrNull()
+        val scheme = uri?.scheme?.lowercase().orEmpty()
+        if (scheme.startsWith("socks")) {
+            Log.w(TAG, "检测到 SOCKS 代理（$raw），当前仅支持 HTTP 代理，按直连处理")
+            return null
+        }
+        val host = uri?.host?.takeIf { it.isNotBlank() } ?: return null
+        val port = uri.port.takeIf { it > 0 } ?: when (scheme) {
+            "https" -> 443
+            else -> 80
+        }
+        return Inspect.Proxy(host, port)
+    }
+
+    /**
+     * 读取 GNOME 系统代理（gsettings 的 `org.gnome.system.proxy` schema）。
+     * 只处理「手动(manual)」模式；PAC/自动模式明确记日志后按直连（与 Windows 侧口径一致）。
+     * KDE 的 kioslaverc 暂不支持；命令不存在或超时一律返回 null。
+     */
+    private fun gnomeProxy(): Inspect.Proxy? {
+        val bin = listOf("/usr/bin/gsettings", "/bin/gsettings", "/usr/local/bin/gsettings")
+            .firstOrNull { java.io.File(it).canExecute() } ?: return null
+        val mode = gs(bin, "org.gnome.system.proxy", "mode")?.trim()?.trim('\'', '"') ?: return null
+        if (mode.isEmpty() || mode == "none") return null
+        if (mode != "manual") {
+            Log.w(TAG, "GNOME 代理为 $mode（自动/PAC），本应用仅支持手动 HTTP 代理，按直连处理")
+            return null
+        }
+        for (schema in listOf("org.gnome.system.proxy.http", "org.gnome.system.proxy.https")) {
+            val host = gs(bin, schema, "host")?.trim()?.trim('\'', '"')?.takeIf { it.isNotBlank() }
+            if (host == null) continue
+            val port = gs(bin, schema, "port")?.trim()?.toIntOrNull() ?: DEFAULT_HTTP_PORT
+            return Inspect.Proxy(host, port.coerceIn(1, 65535))
+        }
+        return null
+    }
+
+    /** 执行 `gsettings get <schema> <key>`，2 秒超时；失败返回 null */
+    private fun gs(bin: String, schema: String, key: String): String? = runCatching {
+        val p = ProcessBuilder(bin, "get", schema, key).redirectErrorStream(true).start()
+        if (!p.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
+            p.destroyForcibly()
+            return null
+        }
+        if (p.exitValue() != 0) return null
+        p.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }.trim()
+    }.getOrNull()
 
     /**
      * 纯解析逻辑（不读注册表，便于用例验证）：

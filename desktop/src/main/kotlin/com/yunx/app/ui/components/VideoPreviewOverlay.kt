@@ -63,6 +63,7 @@ import com.yunx.app.util.Log
 import javafx.application.Platform
 import javafx.embed.swing.JFXPanel
 import javafx.scene.Scene
+import javafx.scene.effect.ColorAdjust
 import javafx.scene.layout.Background
 import javafx.scene.layout.BackgroundFill
 import javafx.scene.layout.StackPane
@@ -111,6 +112,8 @@ fun VideoPreviewOverlay(media: VideoMedia?, onDismiss: () -> Unit) {
     // ★ 必须在下面的 LaunchedEffect 之前定好并把它条件化：ffplay 模式不该再去建本地落盘会话
     //   （否则就又变成「下载完再播」，白白多下一份文件）。
     var ffplayMode by remember(shown) { mutableStateOf(resolveUseFfplay()) }
+    // JavaFX 初始化失败（常见于内置 jfxmedia 不支持该视频编码）时，自动切到 FFplay 兼容模式并提示
+    var ffplayNotice by remember(shown) { mutableStateOf(false) }
 
     // 引擎刚下载完成：立刻重新判定播放内核，让当前这次预览直接切到 ffplay 重新起播，
     // 而不是让用户关掉预览、重开一次才生效。
@@ -168,10 +171,18 @@ fun VideoPreviewOverlay(media: VideoMedia?, onDismiss: () -> Unit) {
                         return@LaunchedEffect
                     }
                     result.onSuccess { prepared ->
-                        if (prepared == null) error = "该视频暂时无法在线预览" else source = prepared
+                        if (prepared == null) {
+                            // 内置预览准备超时/失败时，别让用户卡死；有 FFplay 就切兼容模式
+                            Log.w(TAG, "内置预览源准备失败，尝试 FFplay 兼容模式")
+                            ffplayNotice = true
+                            ffplayMode = true
+                        } else {
+                            source = prepared
+                        }
                     }.onFailure {
                         Log.e(TAG, "预览源准备失败: ${it.message}")
-                        error = "视频预览失败：${it.message ?: "未知错误"}"
+                        ffplayNotice = true
+                        ffplayMode = true
                     }
                 }
                 DisposableEffect(shown) {
@@ -186,13 +197,26 @@ fun VideoPreviewOverlay(media: VideoMedia?, onDismiss: () -> Unit) {
 
             val prepared = source
             when {
-                ffplayMode -> FfplayPlayer(
-                    media = shown,
-                    title = shown.fileName.ifBlank { shown.quality },
-                    fullscreen = fullscreen,
-                    onToggleFullscreen = { fullscreen = !fullscreen },
-                    onClose = onDismiss
-                )
+                ffplayMode -> Box(modifier = Modifier.fillMaxSize()) {
+                    FfplayPlayer(
+                        media = shown,
+                        title = shown.fileName.ifBlank { shown.quality },
+                        fullscreen = fullscreen,
+                        onToggleFullscreen = { fullscreen = !fullscreen },
+                        onClose = onDismiss
+                    )
+                    if (ffplayNotice) {
+                        Text(
+                            "内置播放器不支持这个视频的编码，已切换 FFplay 兼容模式（独立窗口）；进度 / 音量 / 亮度仍可在应用底部控制条调整。",
+                            color = Color(0xFFFFD28A),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.align(Alignment.TopStart)
+                                .padding(start = 12.dp, top = 10.dp, end = 56.dp)
+                                .background(Color(0xCC2A2115), shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
 
                 error != null -> Text(
                     text = error!!,
@@ -213,7 +237,12 @@ fun VideoPreviewOverlay(media: VideoMedia?, onDismiss: () -> Unit) {
                     title = shown.fileName.ifBlank { shown.quality },
                     fullscreen = fullscreen,
                     onToggleFullscreen = { fullscreen = !fullscreen },
-                    onClose = onDismiss
+                    onClose = onDismiss,
+                    onPlayerError = { message ->
+                        Log.w(TAG, "内置 JavaFX 播放失败，切换 FFplay 兼容模式: $message")
+                        ffplayNotice = true
+                        ffplayMode = true
+                    }
                 )
             }
 
@@ -237,7 +266,8 @@ private fun VideoPlayer(
     title: String,
     fullscreen: Boolean,
     onToggleFullscreen: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onPlayerError: (String) -> Unit = {}
 ) {
     val panel = remember { JFXPanel() }
     val controller = remember(uri) { FxVideoController(panel) }
@@ -253,8 +283,17 @@ private fun VideoPlayer(
             contentAlignment = Alignment.Center
         ) {
             val error = controller.error
+            LaunchedEffect(error) {
+                if (error != null) onPlayerError(error)
+            }
             if (error != null) {
-                Text(error, color = Color(0xFFE6E6E6))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(error, color = Color(0xFFE6E6E6))
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { onPlayerError(error) }) {
+                        Text("用 FFplay 兼容模式打开（独立窗口）")
+                    }
+                }
             } else {
                 SwingPanel(
                     background = Color.Black,
@@ -362,6 +401,33 @@ private fun PlayerControls(
                 Icon(Icons.Rounded.Close, contentDescription = "关闭预览", tint = Color.White)
             }
         }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "音量",
+                color = Color(0xFF9E9E9E),
+                style = MaterialTheme.typography.labelSmall
+            )
+            Slider(
+                value = controller.volume.toFloat(),
+                onValueChange = { controller.applyVolume(it.toDouble()) },
+                valueRange = 0f..1f,
+                modifier = Modifier.width(110.dp).padding(horizontal = 6.dp)
+            )
+            Text(
+                text = "亮度",
+                color = Color(0xFF9E9E9E),
+                style = MaterialTheme.typography.labelSmall
+            )
+            Slider(
+                value = controller.brightness.toFloat(),
+                onValueChange = { controller.applyBrightness(it.toDouble()) },
+                valueRange = 0f..2f,
+                modifier = Modifier.width(110.dp).padding(horizontal = 6.dp)
+            )
+        }
         // 倍速选项：展开在控制条内（在视频区域之外，不会被 JFXPanel 盖住）
         if (speedMenu) {
             Row(
@@ -417,11 +483,14 @@ private class FxVideoController(private val panel: JFXPanel) {
     var positionMs by mutableStateOf(0L)
     var durationMs by mutableStateOf(0L)
     var muted by mutableStateOf(false)
+    var volume by mutableStateOf(1.0)
+    var brightness by mutableStateOf(1.0)
     var rate by mutableStateOf(1.0)
     var error by mutableStateOf<String?>(null)
 
     private var player: MediaPlayer? = null
     private var mediaView: MediaView? = null
+    private var colorAdjust: ColorAdjust? = null
     private var sceneWidth = 0.0
     private var sceneHeight = 0.0
     private var disposed = false
@@ -452,6 +521,9 @@ private class FxVideoController(private val panel: JFXPanel) {
 
                 val view = MediaView(fxPlayer)
                 view.isPreserveRatio = true
+                val adjust = ColorAdjust().apply { brightness = this@FxVideoController.brightness - 1.0 }
+                view.effect = adjust
+                colorAdjust = adjust
                 mediaView = view
                 // Scene 尺寸不能直接 setWidth（包私有），只能按需重建 Scene 来跟随面板尺寸
                 panel.background = java.awt.Color.BLACK
@@ -489,7 +561,9 @@ private class FxVideoController(private val panel: JFXPanel) {
                     playing = status == MediaPlayer.Status.PLAYING
                 }
                 fxPlayer.muteProperty().addListener { _, _, value -> muted = value }
+                fxPlayer.volumeProperty().addListener { _, _, value -> volume = value.toDouble() }
                 fxPlayer.rateProperty().addListener { _, _, value -> rate = value.toDouble() }
+                fxPlayer.volume = volume
 
                 durationMs = toMillis(loaded.duration)
                 applyScene()
@@ -600,6 +674,23 @@ private class FxVideoController(private val panel: JFXPanel) {
     }
 
     fun toggleMute() = post { p -> p.isMute = !p.isMute }
+
+    /** 0..1；拖动音量条时自动取消静音 */
+    fun applyVolume(value: Double) {
+        val v = value.coerceIn(0.0, 1.0)
+        volume = v
+        post { p ->
+            p.volume = v
+            if (v > 0.0 && p.isMute) p.isMute = false
+        }
+    }
+
+    /** 0..2，1 为原始亮度；映射到 ColorAdjust.brightness 的 -1..1 */
+    fun applyBrightness(value: Double) {
+        val v = value.coerceIn(0.0, 2.0)
+        brightness = v
+        Platform.runLater { runCatching { colorAdjust?.brightness = v - 1.0 } }
+    }
 
     fun dispose() {
         disposed = true
@@ -804,12 +895,16 @@ private fun prepareSource(media: VideoMedia): PreviewSource? {
  * - 选了「FFplay」→ 一律 true（本机没有 ffplay 时由 [FfplayPlayer] 展示下载引导，不偷偷回退）；
  * - 默认「自动」→ 检测到 ffplay 才走 ffplay，否则回退内置 JavaFX。
  */
-private fun resolveUseFfplay(): Boolean = when (
-    SettingsRepository().previewEngine
-) {
-    SettingsRepository.PREVIEW_JAVA_FX -> false
-    SettingsRepository.PREVIEW_FFPLAY -> true
-    else -> FfplayManager.locate() != null
+private fun resolveUseFfplay(): Boolean {
+    val engine = SettingsRepository().previewEngine
+    // Linux/macOS 没有实现 ffplay 窗口嵌入：显式选 FFPLAY 仍允许（兼容性优先），
+    // 但「自动」默认走内嵌 JavaFX；JavaFX 初始化失败时再自动提示并切 FFplay。
+    if (!FfplayManager.isWindows()) return engine == SettingsRepository.PREVIEW_FFPLAY
+    return when (engine) {
+        SettingsRepository.PREVIEW_JAVA_FX -> false
+        SettingsRepository.PREVIEW_FFPLAY -> true
+        else -> FfplayManager.locate() != null
+    }
 }
 
 private const val TAG = "YunX-VideoPreview"

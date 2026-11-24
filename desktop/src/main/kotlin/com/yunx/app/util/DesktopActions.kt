@@ -62,6 +62,18 @@ object DesktopActions {
     fun revealFile(path: String): Boolean {
         val file = File(path)
         if (!file.exists()) return false
+        if (!WindowsTitleBar.isWindows) {
+            // Linux / macOS：没有「定位到这个文件」的通用接口，统一打开它所在的目录
+            val os = System.getProperty("os.name", "").lowercase()
+            if (os.contains("mac")) {
+                return runCatching {
+                    ProcessBuilder("open", "-R", file.absolutePath).start()
+                    true
+                }.getOrDefault(false)
+            }
+            val parent = file.absoluteFile.parentFile ?: return false
+            return openDirectory(parent.absolutePath)
+        }
         if (WindowsTitleBar.isWindows) {
             // 返回 HINSTANCE：> 32 表示成功（<= 32 是错误码），失败再退回命令行方式
             val ret = runCatching {
@@ -78,12 +90,17 @@ object DesktopActions {
         }.getOrDefault(false)
     }
 
-    /** 在资源管理器中打开目录（不存在时先创建） */
+    /** 在文件管理器里打开目录（不存在时先创建）；Windows 用 explorer，macOS 用 open，Linux 用 xdg-open */
     fun openDirectory(path: String): Boolean {
         val dir = File(path)
         if (!dir.isDirectory && !dir.mkdirs()) return false
+        val os = System.getProperty("os.name", "").lowercase()
         return runCatching {
-            ProcessBuilder("explorer.exe", dir.absolutePath).start()
+            when {
+                WindowsTitleBar.isWindows -> ProcessBuilder("explorer.exe", dir.absolutePath).start()
+                os.contains("mac") -> ProcessBuilder("open", dir.absolutePath).start()
+                else -> ProcessBuilder("xdg-open", dir.absolutePath).start()
+            }
             true
         }.getOrDefault(false)
     }
@@ -119,6 +136,15 @@ object DesktopActions {
      */
     fun restartApp(): Boolean {
         val exe = launcherExe() ?: return false
+        if (!WindowsTitleBar.isWindows) {
+            // Linux / macOS：没有 cmd，用 sh 延迟 2 秒拉起启动器（等本进程放掉数据库/缓存句柄）
+            return runCatching {
+                ProcessBuilder(
+                    "sh", "-c", "sleep 2; exec \"${exe.absolutePath}\""
+                ).directory(exe.parentFile).start()
+                true
+            }.getOrDefault(false)
+        }
         return runCatching {
             // 用 cmd 延迟启动：本进程马上就会退出，必须等它把文件句柄都放掉。
             // 延迟用 ping 而不是 timeout —— timeout 在 stdin 被重定向时会直接报错退出（ProcessBuilder 默认就是管道）
@@ -133,13 +159,45 @@ object DesktopActions {
     /**
      * 关闭计算机（「下载完成后关机」用）。
      *
-     * 走系统 shutdown 命令：普通用户本地关机不需要管理员权限（SeShutdownPrivilege），
-     * 调用方无需提权。非 Windows 直接返回 false（本功能目前仅在桌面端 Windows 提供）。
+     * Windows 走 shutdown /s；Linux 走 systemctl poweroff，失败再回退 shutdown -h now / poweroff。
+     * 普通用户本地关机由 systemd + polkit 授权，调用方无需提权。
      *
      * @param seconds 关机前延迟秒数（0 = 立即关机）；调用方负责在倒计时期间决定是否取消
      * @return 是否成功发起
      */
     fun shutdownComputer(seconds: Int = 0): Boolean {
+        val os = System.getProperty("os.name", "").lowercase()
+        if (os.contains("linux")) {
+            val delayMinutes = if (seconds > 0) ((seconds + 59) / 60).coerceAtLeast(1) else 0
+            val candidates = if (delayMinutes > 0) {
+                listOf(listOf("shutdown", "-h", "+$delayMinutes"))
+            } else {
+                listOf(
+                    listOf("systemctl", "poweroff"),
+                    listOf("shutdown", "-h", "now"),
+                    listOf("poweroff")
+                )
+            }
+            for (cmd in candidates) {
+                val ok = runCatching {
+                    val p = ProcessBuilder(cmd).redirectErrorStream(true).start()
+                    // 给 systemd/polkit 留出拒绝的时间（正常关机时进程很快就断开，这里最多阻塞 2s）
+                    if (!p.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                        // 命令尚未返回通常意味着已经在关机流程里了
+                        true
+                    } else {
+                        val code = p.exitValue()
+                        if (code != 0) Log.w("YunX-Desktop", "关机命令失败($code)：${cmd.joinToString(" ")}")
+                        code == 0
+                    }
+                }.getOrDefault(false)
+                if (ok) {
+                    Log.i("YunX-Desktop", "已发起关机：${cmd.joinToString(" ")}")
+                    return true
+                }
+            }
+            return false
+        }
         if (!WindowsTitleBar.isWindows) return false
         return runCatching {
             ProcessBuilder("shutdown", "/s", "/t", seconds.coerceAtLeast(0).toString()).start()

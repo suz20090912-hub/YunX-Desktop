@@ -1,9 +1,34 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.io.File
 
 plugins {
     kotlin("jvm")
     id("org.jetbrains.compose")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+// ===================== 多平台移植（linux-port 分支） =====================
+// 宿主平台判定：原生依赖（JavaFX / JCEF / SQLite）按平台挑 classifier，
+// 打包目标格式也随之切换。Windows 侧行为保持不变。
+val buildOs = System.getProperty("os.name").lowercase()
+val buildArch = System.getProperty("os.arch").lowercase()
+val isWindowsHost = buildOs.contains("win")
+val isMacHost = buildOs.contains("mac")
+val isLinuxHost = !isWindowsHost && !isMacHost
+val jfxClassifier = when {
+    isWindowsHost -> "win"
+    isMacHost -> if (buildArch.contains("aarch64")) "mac-aarch64" else "mac"
+    buildArch.contains("aarch64") -> "linux-aarch64"
+    else -> "linux"
+}
+// 与 Windows 版同一个 jcef 构建号，换平台只换 artifact 前缀
+val JCEF_VERSION = "jcef-1770317+cef-132.3.1+g144febe+chromium-132.0.6834.83"
+val jcefNativesCoordinate = when {
+    isWindowsHost -> "me.friwi:jcef-natives-windows-amd64:$JCEF_VERSION"
+    isMacHost && buildArch.contains("aarch64") -> "me.friwi:jcef-natives-macos-arm64:$JCEF_VERSION"
+    isMacHost -> "me.friwi:jcef-natives-macos-x64:$JCEF_VERSION"
+    buildArch.contains("aarch64") -> "me.friwi:jcef-natives-linux-arm64:$JCEF_VERSION"
+    else -> "me.friwi:jcef-natives-linux-amd64:$JCEF_VERSION"
 }
 
 dependencies {
@@ -28,7 +53,9 @@ dependencies {
     // Room -> 纯 JDBC SQLite
     // ★ 用裁剪后的本地 jar：官方包 13.6 MB，含六个平台的原生库，本项目只跑 Windows。
     //   只保留 org/sqlite/native/Windows（x86/x86_64/arm/arm64），其余代码与 META-INF 原样保留。
-    implementation(files("libs/sqlite-jdbc-3.47.1.0-win.jar"))
+    // Windows 用仓库里裁过的本地 jar（只含 Windows 原生库）；其它平台用官方全量包
+    if (isWindowsHost) implementation(files("libs/sqlite-jdbc-3.47.1.0-win.jar"))
+    else implementation("org.xerial:sqlite-jdbc:3.47.1.0")
     // Android 内置 org.json 的 JVM 等价物
     implementation("org.json:json:20240303")
     // 主题种子色（material-color-utilities 无公开仓库坐标；从 material 1.14.0 AAR 解包 classes.jar 本地引入）
@@ -37,10 +64,10 @@ dependencies {
     // JavaFX MediaView 播放器（M6）：JFXPanel 经 SwingPanel 嵌入 Compose。
     // 版本跟随 jvmToolchain(17)；发布目标只有 Windows，直接用 :win classifier（jar 内含原生库，
     // 首次运行由 JavaFX 自动解到用户目录缓存，jpackage 无需额外处理）
-    implementation("org.openjfx:javafx-base:17.0.13:win")
-    implementation("org.openjfx:javafx-graphics:17.0.13:win")
-    implementation("org.openjfx:javafx-media:17.0.13:win")
-    implementation("org.openjfx:javafx-swing:17.0.13:win")
+    implementation("org.openjfx:javafx-base:17.0.13:$jfxClassifier")
+    implementation("org.openjfx:javafx-graphics:17.0.13:$jfxClassifier")
+    implementation("org.openjfx:javafx-media:17.0.13:$jfxClassifier")
+    implementation("org.openjfx:javafx-swing:17.0.13:$jfxClassifier")
 
     // GFM Markdown 渲染（README / 更新说明）。注意：必须停留在 0.33.x ——
     // 0.34.0 起改用 Compose 1.8+ 的 BasicText 签名（含 TextAutoSize），与项目锁定的
@@ -71,7 +98,7 @@ dependencies {
     //   发布包不随带这个 120MB 的 jar，改由打包脚本用 JcefNativesPacker 重打成
     //   app\jcef-natives.tar.gz（裁剪语言包），首次使用时由 JcefNativesInstaller 解开。
     //   见 portable-package.ps1 [2c/5] 与 ui/jcef/JcefNativesInstaller.kt。
-    implementation("me.friwi:jcef-natives-windows-amd64:jcef-1770317+cef-132.3.1+g144febe+chromium-132.0.6834.83")
+    implementation(jcefNativesCoordinate)
 
     // tar.gz 读写：CEF 原生库发布包（打包期重打成 gzip，运行期自解包）
     // jcefmaven 已传递引入 commons-compress，这里显式声明版本以保证稳定
@@ -202,7 +229,7 @@ fun findMsvcVcvars(): File? {
     return null
 }
 
-val compileDarkMode by tasks.registering(Exec::class) {
+val compileDarkMode: TaskProvider<out Task> = if (isWindowsHost) tasks.register<Exec>("compileDarkMode") {
     val vcvars = findMsvcVcvars()
     inputs.file(darkModeSrc)
     outputs.file(darkModeOut)
@@ -225,13 +252,17 @@ val compileDarkMode by tasks.registering(Exec::class) {
             darkModeSrc.absolutePath, "-lkernel32", "-luser32"
         )
     }
+} else {
+    // Linux / macOS 没有 uxtheme，托盘菜单暗色桥接层整块跳过：
+    // Kotlin 侧 DarkMode 会退化为「读不到系统配色 → 按浅色」，不影响启动。
+    tasks.register("compileDarkMode") { doLast { println("[linux-port] 非 Windows 宿主，跳过 darkmode.dll") } }
 }
 
 // 开发运行（:desktop:run）时把 DLL 目录并入 java.library.path，并保留 JDK bin（jawt 等原生库）
 tasks.withType<JavaExec> {
     dependsOn(compileDarkMode)
     val jvmBin = File(System.getProperty("java.home"), "bin").absolutePath
-    systemProperty("java.library.path", "${nativeOutDir.absolutePath};$jvmBin")
+    systemProperty("java.library.path", nativeOutDir.absolutePath + File.pathSeparator + jvmBin)
 }
 
 // 收集运行时依赖 jar 路径（供便携版 app-image 打包）
@@ -257,19 +288,145 @@ tasks.register<Sync>("exportJcefNatives") {
     into(layout.projectDirectory.dir("build/jcefNatives"))
 }
 
+// ===================== Debian 运行依赖自动补丁 =====================
+// jpackage 生成的 control 只包含 jlink 探测到的底层库，不会声明 JCEF/GTK、
+// JavaFX/GStreamer 等运行时才加载的依赖。这里在 packageDeb 之后原地重写
+// DEBIAN/control，保证 `apt install ./xxx.deb` 能自动补齐运行环境。
+// 只在 Linux 宿主执行；Windows 构建不受影响。
+val debRuntimeDepends = listOf(
+    "libgtk-3-0 | libgtk-3-0t64",
+    "libnss3",
+    "libgbm1",
+    "libxss1",
+    "libx11-xcb1",
+    "libxcomposite1",
+    "libxdamage1",
+    "libxrandr2",
+    "libatk-bridge2.0-0 | libatk-bridge2.0-0t64",
+    "libcups2 | libcups2t64",
+    "libdrm2"
+)
+val debRuntimeRecommends = listOf(
+    "ffmpeg",
+    "gstreamer1.0-plugins-base",
+    "gstreamer1.0-plugins-good",
+    "gstreamer1.0-libav",
+    "libnotify-bin",
+    "wmctrl",
+    "xdotool"
+)
+
+val patchDebDepends = tasks.register("patchDebDepends") {
+    group = "distribution"
+    description = "为生成的 deb 补充 GTK / JCEF / JavaFX 运行依赖"
+    doLast {
+        if (!isLinuxHost) {
+            println("[linux-port] 非 Linux 宿主，跳过 deb 依赖补丁")
+            return@doLast
+        }
+        val debDir = layout.buildDirectory.dir("compose/binaries/main/deb").get().asFile
+        val deb = debDir.listFiles { file -> file.isFile && file.name.endsWith(".deb") }
+            ?.maxByOrNull { it.lastModified() }
+            ?: error("未找到 deb 产物: ${debDir.absolutePath}")
+        val workDir = layout.buildDirectory.dir("compose/tmp/deb-depends").get().asFile
+        if (workDir.exists()) workDir.deleteRecursively()
+        workDir.mkdirs()
+
+        fun runCommand(vararg command: String) {
+            val process = ProcessBuilder(*command)
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().use { it.readText() }
+            val exit = process.waitFor()
+            if (exit != 0) {
+                error("命令失败($exit): ${command.joinToString(" ")}\n$output")
+            }
+            if (output.isNotBlank()) println(output.trim())
+        }
+
+        runCommand("dpkg-deb", "-R", deb.absolutePath, workDir.absolutePath)
+        val controlFile = File(workDir, "DEBIAN/control")
+        val lines = controlFile.readLines().toMutableList()
+
+        fun mergeField(field: String, additions: List<String>) {
+            val index = lines.indexOfFirst { it.startsWith("$field:") }
+            val existing = if (index >= 0) {
+                lines[index].substringAfter(":").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            } else {
+                emptyList()
+            }
+            val merged = (existing + additions).distinct()
+            if (index >= 0) {
+                lines[index] = "$field: ${merged.joinToString(", ")}"
+            } else {
+                lines.add("$field: ${merged.joinToString(", ")}")
+            }
+        }
+
+        mergeField("Depends", debRuntimeDepends)
+        mergeField("Recommends", debRuntimeRecommends)
+        // Debian control 只允许一个包信息段落，字段之间不能留空行。
+        val normalized = lines.filter { it.isNotBlank() }
+        controlFile.writeText(normalized.joinToString("\n") + "\n")
+
+        // 无桌面会话 / 无 system menu 的环境下 xdg-desktop-menu 会返回非 0，
+        // 不应因此让整个 apt 安装失败；安装菜单失败时仅跳过菜单注册。
+        listOf("postinst", "prerm").forEach { name ->
+            val script = File(workDir, "DEBIAN/$name")
+            if (script.exists()) {
+                script.writeText(
+                    script.readText()
+                        .replace(Regex("(?m)^(xdg-desktop-menu (?:install|uninstall) .+)$"), "$1 || true")
+                )
+            }
+        }
+
+        // 提供 /usr/bin/yunx-desktop 命令；jpackage 默认只装到 /opt/yunx-desktop/bin。
+        val cliDir = File(workDir, "usr/bin")
+        cliDir.mkdirs()
+        val cliLink = File(cliDir, "yunx-desktop")
+        if (cliLink.exists()) cliLink.delete()
+        runCommand("ln", "-s", "../../opt/yunx-desktop/bin/YunX-Desktop", cliLink.absolutePath)
+
+        runCommand("dpkg-deb", "--build", "--root-owner-group", workDir.absolutePath, deb.absolutePath)
+        workDir.deleteRecursively()
+        println("[linux-port] 已补充 deb 运行依赖: ${deb.name}")
+    }
+}
+
+tasks.matching { it.name == "packageDeb" }.configureEach {
+    finalizedBy(patchDebDepends)
+}
+
 compose.desktop {
     application {
         mainClass = "com.yunx.app.MainKt"
         nativeDistributions {
-            targetFormats(TargetFormat.Exe)
+            targetFormats(
+                when {
+                    isWindowsHost -> TargetFormat.Exe
+                    isMacHost -> TargetFormat.Dmg
+                    else -> TargetFormat.Deb
+                }
+            )
             // sqlite-jdbc 通过反射加载 java.sql.Driver，jlink 自动检测不到，必须显式声明；
             // jdk.httpserver 是视频预览的本地回环代理（com.sun.net.httpserver），
             // jdk.unsupported.desktop 是 JavaFX 与 Swing 互操作（JFXPanel 里的 jdk.swing.interop）——
             // 两者 jdeps 都探测不到，漏了它们安装包里的预览会一律失败（无法预览 / 播放器初始化失败）
             modules("java.sql", "java.naming", "jdk.httpserver", "jdk.unsupported.desktop")
             // 每用户安装（%LOCALAPPDATA%\Programs），无需管理员权限
-            windows {
-                perUserInstall = true
+            if (isWindowsHost) {
+                windows {
+                    perUserInstall = true
+                }
+            }
+            if (!isWindowsHost && !isMacHost) {
+                // jpackage 的 Linux 包名必须是全小写、无空格的 Debian 风格
+                linux {
+                    packageName = "yunx-desktop"
+                    menuGroup = "Utility"
+                    shortcut = true
+                }
             }
             packageName = "YunX-Desktop"
             packageVersion = appVersion
