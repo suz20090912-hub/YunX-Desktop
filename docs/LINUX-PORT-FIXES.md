@@ -162,3 +162,9 @@ curl -s http://127.0.0.1:18899/api/v1/info
 - 上游公告服务（`yunx.cyqawa.os.kg`）只发布上游自己的公告，且明文 HTTP 在代理 fake-ip / 断网环境下必然连接超时。
 - Linux 版 `AnnouncementApi` 改为内置公告源：`fetchPage` / `fetchDetail` 直接返回随包内置的 Linux 版公告（置顶发布说明 + 使用须知），对外签名不变，ViewModel / UI / 已读记录（`AnnouncementReadStore`）零改动。
 - 更新公告的方式改为修改内置列表并发新版；新公告 id 自动算未读并触发启动弹窗。
+
+## 公告共存（2026-11-24，v1.3.4-linux.5，取代 .4 方案）
+
+- 按用户决定：上游远程公告**保留且不作任何修改**（接口、请求头、失败语义原样）。
+- Linux 版内置公告改为叠加：`fetchPage` 第一页在远程列表前插入内置公告（去重），`fetchDetail` 命中内置 id 直接离线返回；其余路径与上游逐行一致。
+- `.4` 的"仅内置、断开远程"方案作废，对应 Release 标注被 `.5` 取代。
