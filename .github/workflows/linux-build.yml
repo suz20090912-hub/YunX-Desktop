@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-deb:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
 
     steps:
@@ -43,6 +43,6 @@ jobs:
       - name: 上传 deb 构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: yunx-desktop-linux-deb
+          name: yunx-linux-deb
           path: desktop/build/compose/binaries/main/deb/*.deb
           if-no-files-found: error

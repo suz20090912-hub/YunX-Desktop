@@ -365,8 +365,14 @@ val patchDebDepends = tasks.register("patchDebDepends") {
 
         mergeField("Depends", debRuntimeDepends)
         mergeField("Recommends", debRuntimeRecommends)
-        // Debian control 只允许一个包信息段落，字段之间不能留空行。
-        val normalized = lines.filter { it.isNotBlank() }
+        // Ubuntu 24.04 的 jpackage 会写入 t64 包名；这里归一化为带备选的依赖，
+        // 让同一份 deb 在 22.04 / 24.04 都能解析（CI 固定 22.04 构建，兜底仍保留）。
+        val normalized = lines
+            .map {
+                it.replace("libasound2t64", "libasound2 | libasound2t64")
+                    .replace("libpng16-16t64", "libpng16-16 | libpng16-16t64")
+            }
+            .filter { it.isNotBlank() }
         controlFile.writeText(normalized.joinToString("\n") + "\n")
 
         // 无桌面会话 / 无 system menu 的环境下 xdg-desktop-menu 会返回非 0，

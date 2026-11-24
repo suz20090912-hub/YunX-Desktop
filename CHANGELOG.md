@@ -3,6 +3,15 @@
 本文件只记录 Linux 版相对上游 Windows 桌面版的版本变化；完整移植细节见
 [Linux 移植记录](docs/LINUX-PORT-FIXES.md)。
 
+## v1.3.4-linux.3（2026-11-24，待发布）
+
+### 修复
+
+- GitHub Actions 的 Linux 构建与 Release 改为 Ubuntu 22.04，修复 24.04 产物中的 `libasound2t64` / `libpng16-16t64` 依赖在 Ubuntu 22.04 上无法安装的问题。
+- `patchDebDepends` 归一化 t64 包名，使同一份 deb 兼容 Ubuntu 22.04 / 24.04。
+- Linux 构建文档的验证环境统一为 Ubuntu 22.04.5 LTS；同步验收记录中的 deb SHA-256。
+- 应用日志与调试快照标题统一为 `YunX-Linux`。
+
 ## v1.3.4-linux.2（2026-11-24，已发布）
 
 ### 变更
