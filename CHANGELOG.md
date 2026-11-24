@@ -3,6 +3,12 @@
 本文件只记录 Linux 版相对上游 Windows 桌面版的版本变化；完整移植细节见
 [Linux 移植记录](docs/LINUX-PORT-FIXES.md)。
 
+## v1.3.4-linux.9（2026-11-24，待发布）
+
+### 修复
+
+- 修复 Linux 上点仓库链接 / 任何外链无反应：`DesktopActions.openUrl` 改走 `xdg-open`（awt `Desktop.browse` 依赖老 GNOME 库，Ubuntu 22.04/24.04 默认缺失且异常被静默吞掉）；Windows 保持原路径，失败回退 awt 并记日志。
+- 同因修复下载页「打开」按钮（`openFile` 原走 `Desktop.open`），Linux 改走 `xdg-open`。
 ## v1.3.4-linux.8（2026-11-24，已发布）
 
 ### 修复

@@ -180,3 +180,9 @@ curl -s http://127.0.0.1:18899/api/v1/info
 - version.txt 新增第三行 `LinuxRelease=N`；构建生成 `APP_LINUX_RELEASE`，Linux 上 `UpdateChecker.currentVersion()` 返回 `1.3.4-linux.N`，与 tag `v1.3.4-linux.N` 逐段比较（修复 .7 及以前装完仍反复弹更新）。
 - jpackage `packageVersion` 改为 `1.3.4.N`（deb 版本 `1.3.4.N-1`），保证 apt 视每个移植序号为可升级新版本。
 - **发布清单：打 `v1.3.4-linux.N` 标签前，必须把 version.txt 第三行同步改成 N。**
+
+## 外链与打开文件改走 xdg-open（2026-11-24，v1.3.4-linux.9）
+
+- 现象：Linux 真机点关于页 / 支持页仓库链接无任何反应；复制 QQ 号正常（剪贴板不经过 awt Desktop）。
+- 根因：`java.awt.Desktop.browse/open` 在 X11 下依赖老 GNOME 库（libgnome-2 系），现代 Ubuntu 默认不装 → 抛异常；原代码 runCatching 静默吞掉。
+- 修复：`openUrl` / `openFile` 在 Linux 走 `xdg-open`（xdg-utils 已在 deb Depends）、macOS 走 `open`，Windows 保持 awt；启动失败回退 awt 并记 W 级日志。

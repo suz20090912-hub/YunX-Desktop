@@ -39,10 +39,22 @@ object DesktopActions {
             .getData(java.awt.datatransfer.DataFlavor.stringFlavor) as? String
     }.getOrNull()
 
-    /** 用系统默认应用打开文件（下载完成后的「打开」） */
+    /** 用系统默认应用打开文件（下载完成后的「打开」）；Linux 走 xdg-open（awt Desktop 依赖老 GNOME 库，现代发行版必失败） */
     fun openFile(path: String): Boolean {
         val file = File(path)
         if (!file.exists()) return false
+        val os = System.getProperty("os.name", "").lowercase()
+        val launched = runCatching {
+            when {
+                os.contains("linux") || os.contains("nix") -> ProcessBuilder("xdg-open", file.absolutePath).start()
+                os.contains("mac") -> ProcessBuilder("open", file.absolutePath).start()
+                else -> {
+                    java.awt.Desktop.getDesktop().open(file)
+                    null
+                }
+            }
+        }.isSuccess
+        if (launched) return true
         return runCatching {
             java.awt.Desktop.getDesktop().open(file)
             true
@@ -213,10 +225,22 @@ object DesktopActions {
         return File(File(System.getProperty("user.dir") ?: "."), "YunX-Desktop.exe").takeIf { it.isFile }
     }
 
-    /** 用系统默认浏览器打开链接 */
+    /** 用系统默认浏览器打开链接；Linux 走 xdg-open（awt Desktop.browse 依赖老 GNOME 库，现代发行版静默失败） */
     fun openUrl(url: String) {
-        runCatching {
-            java.awt.Desktop.getDesktop().browse(URI(url))
+        val os = System.getProperty("os.name", "").lowercase()
+        val launched = runCatching {
+            when {
+                os.contains("linux") || os.contains("nix") -> ProcessBuilder("xdg-open", url).start()
+                os.contains("mac") -> ProcessBuilder("open", url).start()
+                else -> {
+                    java.awt.Desktop.getDesktop().browse(URI(url))
+                    null
+                }
+            }
+        }.isSuccess
+        if (!launched) {
+            runCatching { java.awt.Desktop.getDesktop().browse(URI(url)) }
+                .onFailure { Log.w("YunX-Desktop", "打开链接失败：$url（${it.message}）") }
         }
     }
 
