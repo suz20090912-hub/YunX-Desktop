@@ -2,8 +2,8 @@
 
 日期：2026-11-24
 环境：Ubuntu 22.04.5 LTS x86_64（无头验收，Xvfb 1440x900 + Openbox）
-安装包：`yunx-desktop_1.3.4-1_amd64.deb`（Release `v1.3.4-linux.3`，230,120,998 字节）
-SHA-256：`48a945e7dd51b2b0a614a873620d0a5ea831c9b9189e9efb84da7412f650276f`
+安装包：`yunx-desktop_1.3.4-1_amd64.deb`（Release `v1.3.4-linux.7`，230,122,118 字节；首次验收为 `v1.3.4-linux.3`，230,120,998 字节）
+SHA-256：`41a34a6ece544d44bd41f1b9f4fe4dfa066a95b006db1519dbdab87952206e94`（.3 为 `48a945e7dd51b2b0a614a873620d0a5ea831c9b9189e9efb84da7412f650276f`）
 
 ## 安装
 
@@ -21,7 +21,9 @@ sudo dpkg -i desktop/build/compose/binaries/main/deb/yunx-desktop_1.3.4-1_amd64.
 `DEBIAN/control` 的关键字段：
 
 ```text
-Depends: ... libasound2 | libasound2t64, libpng16-16 | libpng16-16t64, libgtk-3-0 | libgtk-3-0t64, libnss3, libgbm1, libxss1,
+Depends: libasound2, libbrotli1, libbsd0, libc6, libexpat1, libfontconfig1, libfreetype6, libgl1, libglvnd0, libglx0, libmd0,
+ libpng16-16, libuuid1, libx11-6, libxau6, libxcb1, libxdmcp6, libxext6, libxi6, libxrender1, libxtst6, xdg-utils, zlib1g,
+ libgtk-3-0 | libgtk-3-0t64, libnss3, libgbm1, libxss1,
  libx11-xcb1, libxcomposite1, libxdamage1, libxrandr2,
  libatk-bridge2.0-0 | libatk-bridge2.0-0t64,
  libcups2 | libcups2t64, libdrm2
@@ -60,7 +62,16 @@ I/YunX-JCEF: JCEF initialized (attempt 1)
 - Linux 更新检查查询 `suz20090912-hub/YunX-Linux` 的 Releases，只匹配 Linux 资产。
 - `/usr/bin/yunx-desktop` 可直接启动应用。
 
+## 一键安装更新复核（v1.3.4-linux.7，2026-11-24）
+
+- 下载 Release .7 的 deb，`sha256sum` 与发布页 digest 一致（`41a34a6e…6e94`），`sudo dpkg -i` 成功。
+- `DISPLAY=:100` 启动后 `xdotool search --name 云析 getwindowname` 返回「云析 YunX-Linux」，主窗口 1090x730 正常。
+- 包内 `lib/app/desktop-*.jar` 含 `com/yunx/app/util/LinuxPackageInstaller.class`（一键安装入口已随包发布）。
+- 系统存在 `/usr/bin/pkexec`；图形密码框依赖桌面会话的 polkit agent（GNOME/KDE 自带），
+  无头验收环境无 agent，故一键安装的授权弹窗只能在真实桌面（如 Hyper-V 里的 Ubuntu 桌面）验证。
+
 ## 待办
 
-- 真实 GitHub Actions 的 tag Release 需要在首次推送 tag 后实际触发验证；当前已在本地通过 YAML 解析与 Gradle 打包。
+- 真实 GitHub Actions 的 tag Release 已实际触发验证（v1.3.4-linux.1 ~ .7 均产出 deb 资产）。
 - 桌面菜单注册依赖真实桌面会话；当前无头环境已验证不会阻塞安装。
+- 一键安装按钮的图形授权弹窗待在真实桌面会话点验一次（无头环境无法弹 polkit 框）。
