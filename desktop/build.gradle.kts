@@ -127,15 +127,22 @@ val appIsPreview = versionLines.drop(1).firstOrNull()?.let { line ->
         else -> line.lowercase() in setOf("preview", "beta")
     }
 } ?: false
+// 第三行 LinuxRelease=N：Linux 移植发布序号（与 tag v<版本>-linux.N 对应）。
+// 用于更新比较 / 关于页显示，并拼进 deb 版本号（1.3.4.N），保证 apt 视每个 linux.N 为可升级新版本。
+// ★ 每次打 linux.N 标签时同步把这里改成 N，否则更新检查会把同序号判成有更新。
+val linuxRelease = versionLines.drop(2).firstOrNull()
+    ?.substringAfter('=', "")?.trim()?.toIntOrNull() ?: 0
 
 // 生成 Kotlin 常量供 UpdateChecker 使用，避免应用内再维护一份硬编码
 val generateAppVersion by tasks.registering {
     val outDir = layout.buildDirectory.dir("generated/appVersion/kotlin")
     val version = appVersion
     val isPreview = appIsPreview.toString()
+    val lr = linuxRelease
     outputs.dir(outDir)
     inputs.property("version", version)
     inputs.property("isPreview", isPreview)
+    inputs.property("linuxRelease", lr)
     doLast {
         val pkgDir = outDir.get().asFile.resolve("com/yunx/app")
         pkgDir.mkdirs()
@@ -148,6 +155,9 @@ val generateAppVersion by tasks.registering {
             |
             |/** 是否为预览版（version.txt 第二行 Beta=1）；预览版在关于页显示 Beta 标记 */
             |internal const val APP_IS_PREVIEW = $isPreview
+            |
+            |/** Linux 移植发布序号（version.txt 第三行 LinuxRelease=N）；0 = 未指定 */
+            |internal const val APP_LINUX_RELEASE = $lr
             |""".trimMargin() + "\n"
         )
     }
@@ -435,7 +445,9 @@ compose.desktop {
                 }
             }
             packageName = "YunX-Linux"
-            packageVersion = appVersion
+            // deb 版本号带移植序号（如 1.3.4.8）：纯 1.3.4 会让 apt 把后续 linux.N 包判成
+            // "已是最新" 而跳过安装，一键更新就失效了；序号拼在末段保持纯数字合法格式
+            packageVersion = if (linuxRelease > 0) "$appVersion.$linuxRelease" else appVersion
             // 注意：jpackage 参数文件解析不支持非 ASCII 描述（本机报 "Input length = 1"），描述保持纯英文
             description = "YunX-Linux - netdisk share-link parser and high-speed downloader (Linux port of YunX for Android)"
             vendor = "YunX-Linux"

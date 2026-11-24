@@ -1,5 +1,6 @@
 package com.yunx.app.data.update
 
+import com.yunx.app.APP_LINUX_RELEASE
 import com.yunx.app.APP_VERSION
 import com.yunx.app.data.network.HttpClients
 import com.yunx.app.util.Log
@@ -185,7 +186,13 @@ object UpdateChecker {
     /** 当前应用版本号，来源：仓库根 version.txt（构建时生成 APP_VERSION，勿在此硬编码） */
     const val PC_VERSION = APP_VERSION
 
-    fun currentVersion(): String = PC_VERSION
+    /**
+     * 更新比较 / 关于页展示用的版本号：Linux 上带移植发布序号（如 `1.3.4-linux.8`），
+     * 与 Release tag `v1.3.4-linux.N` 逐段对齐——否则纯 `1.3.4` 对 tag 会永远少一段、
+     * 被误判成"有更新"（装了同序号包仍反复弹更新）。非 Linux 保持纯版本号。
+     */
+    fun currentVersion(): String =
+        if (isLinuxHost && APP_LINUX_RELEASE > 0) "$PC_VERSION-linux.$APP_LINUX_RELEASE" else PC_VERSION
 
     /**
      * 请求 GitHub 最新 Release。

@@ -174,3 +174,9 @@ curl -s http://127.0.0.1:18899/api/v1/info
 - 新增 `util/LinuxPackageInstaller`：`pkexec /usr/bin/apt-get install -y <deb 绝对路径>`，polkit 图形密码框授权；退出码 126/127 分别译为「取消授权 / 授权失败」。
 - 下载页两处已完成任务操作区（独立任务卡 / 文件夹子任务行）新增「安装更新」图标按钮，仅 Linux 且文件为 `.deb` 时渲染；安装结果走 Snackbar。
 - 更新弹窗 Linux 包按钮下新增提示：下载完成后到下载页一键安装，无需终端。
+
+## 更新检查与包版本号（2026-11-24，v1.3.4-linux.8）
+
+- version.txt 新增第三行 `LinuxRelease=N`；构建生成 `APP_LINUX_RELEASE`，Linux 上 `UpdateChecker.currentVersion()` 返回 `1.3.4-linux.N`，与 tag `v1.3.4-linux.N` 逐段比较（修复 .7 及以前装完仍反复弹更新）。
+- jpackage `packageVersion` 改为 `1.3.4.N`（deb 版本 `1.3.4.N-1`），保证 apt 视每个移植序号为可升级新版本。
+- **发布清单：打 `v1.3.4-linux.N` 标签前，必须把 version.txt 第三行同步改成 N。**
