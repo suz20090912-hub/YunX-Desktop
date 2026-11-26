@@ -21,6 +21,10 @@ Range 分片并发 + 断点续传，B 站高清自动合轨。
 
 ***
 
+> **非官方 Linux 移植版。** 本仓库由社区从上游 Windows 桌面版 [tidain/YunX-Desktop](https://github.com/tidain/YunX-Desktop)
+> 移植而来，**不是上游作者发布或维护的官方版本**，与上游作者无隶属关系；名称与图标沿用云析项目，仅为表明同源。
+> 官方版本请以上游仓库为准，本仓库的问题请在本仓库反馈。
+
 > **云析永远免费开源。** 如果你是在任何地方「花钱买到」的，说明你被骗了，请立即退款。
 > 任何收费版本均为二次打包的诈骗版本，与本项目无关。
 
@@ -29,7 +33,7 @@ Range 分片并发 + 断点续传，B 站高清自动合轨。
 
 ## Linux 版说明
 
-本仓库是 **云析 Linux 版（YunX-Linux）**，由上游 **Windows 桌面版 YunX-Desktop** 移植而来：
+本仓库是 **云析 Linux 版（YunX-Linux）**，由上游 **Windows 桌面版 YunX-Desktop** 移植而来（非官方移植，见页首声明）：
 
 - Linux 版仓库：<https://github.com/suz20090912-hub/YunX-Linux>
 - 上游 Windows 桌面版：[tidain/YunX-Desktop](https://github.com/tidain/YunX-Desktop)
